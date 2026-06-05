@@ -21,9 +21,11 @@ interface User {
   tenantId: string;
 }
 
+// NOTE: keys are camelCase here because the axios response interceptor
+// (src/lib/api.ts) converts the backend's snake_case payload to camelCase.
 interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
+  accessToken: string;
+  refreshToken: string;
   user: User;
 }
 
@@ -45,7 +47,7 @@ export default function LoginPage() {
     setServerError(null);
     try {
       const { data } = await api.post<LoginResponse>('/auth/login', values);
-      setAuth(data.user, data.access_token);
+      setAuth(data.user, data.accessToken);
       router.push('/dashboard');
     } catch (err) {
       if (axios.isAxiosError(err)) {
