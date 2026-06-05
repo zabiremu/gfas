@@ -1,0 +1,27 @@
+# Dependencies
+/node_modules
+
+# Compiled output
+/dist
+/build
+
+# Generated documents (PDF output)
+/uploads
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# Tests
+/coverage

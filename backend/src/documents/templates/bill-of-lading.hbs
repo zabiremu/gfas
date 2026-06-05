@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>House Bill of Lading {{shipmentNumber}}</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        color: #1a2433;
+        font-size: 11px;
+        line-height: 1.4;
+        background: #ffffff;
+      }
+      .page {
+        width: 794px;
+        margin: 0 auto;
+        padding: 0 0 28px;
+      }
+      /* Header */
+      .masthead {
+        background: #07172e;
+        color: #ffffff;
+        padding: 20px 28px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .brand {
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: 0.4px;
+      }
+      .brand small {
+        display: block;
+        font-size: 10px;
+        font-weight: 400;
+        opacity: 0.75;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-top: 2px;
+      }
+      .masthead .doc-meta {
+        text-align: right;
+        font-size: 10px;
+        opacity: 0.85;
+      }
+      .doc-title {
+        text-align: center;
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: 3px;
+        padding: 14px 0 10px;
+        text-transform: uppercase;
+        border-bottom: 3px solid #07172e;
+      }
+      .doc-subbar {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 28px;
+        background: #eef2f7;
+        border-bottom: 1px solid #c9d4e0;
+        font-size: 11px;
+      }
+      .doc-subbar strong {
+        color: #07172e;
+      }
+      .content {
+        padding: 0 28px;
+      }
+      /* Columns */
+      .columns {
+        display: flex;
+        gap: 14px;
+        margin-top: 16px;
+      }
+      .col {
+        flex: 1;
+      }
+      .box {
+        border: 1px solid #07172e;
+        margin-bottom: 12px;
+      }
+      .box-label {
+        background: #07172e;
+        color: #ffffff;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        padding: 5px 10px;
+      }
+      .box-body {
+        padding: 10px;
+        min-height: 64px;
+      }
+      .box-body .name {
+        font-weight: 700;
+        font-size: 12px;
+        margin-bottom: 3px;
+      }
+      .kv {
+        display: flex;
+        padding: 5px 10px;
+        border-bottom: 1px dashed #c9d4e0;
+      }
+      .kv:last-child {
+        border-bottom: none;
+      }
+      .kv .k {
+        width: 130px;
+        color: #5b6b80;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .kv .v {
+        flex: 1;
+        font-weight: 600;
+      }
+      /* Cargo table */
+      .section-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #07172e;
+        margin: 18px 0 8px;
+      }
+      table.cargo {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      table.cargo th {
+        background: #07172e;
+        color: #ffffff;
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 8px 10px;
+        text-align: left;
+      }
+      table.cargo td {
+        border: 1px solid #c9d4e0;
+        padding: 10px;
+        vertical-align: top;
+        font-size: 11px;
+      }
+      table.cargo td.num {
+        text-align: right;
+        white-space: nowrap;
+      }
+      /* Hazmat */
+      .hazmat {
+        border: 2px solid #c0392b;
+        margin-top: 16px;
+      }
+      .hazmat .box-label {
+        background: #c0392b;
+      }
+      .hazmat .box-body {
+        min-height: 0;
+        background: #fdf3f2;
+      }
+      .hazmat-grid {
+        display: flex;
+        flex-wrap: wrap;
+      }
+      .hazmat-grid .kv {
+        width: 50%;
+        border-bottom: 1px dashed #e3b6b1;
+      }
+      /* Footer */
+      .footer {
+        margin-top: 22px;
+        border-top: 2px solid #07172e;
+        padding-top: 12px;
+      }
+      .freight-terms {
+        display: inline-block;
+        border: 1.5px solid #07172e;
+        padding: 6px 16px;
+        font-weight: 800;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-bottom: 18px;
+      }
+      .signatures {
+        display: flex;
+        gap: 28px;
+        margin-top: 14px;
+      }
+      .sig {
+        flex: 1;
+      }
+      .sig .line {
+        border-bottom: 1px solid #1a2433;
+        height: 34px;
+      }
+      .sig .caption {
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #5b6b80;
+        margin-top: 4px;
+      }
+      .fine-print {
+        margin-top: 18px;
+        font-size: 9px;
+        font-style: italic;
+        color: #8090a3;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="masthead">
+        <div class="brand">
+          GFAS
+          <small>Global Freight Automation System</small>
+        </div>
+        <div class="doc-meta">
+          B/L No. <strong>{{shipmentNumber}}</strong><br />
+          Issued {{issuedDate}}
+        </div>
+      </div>
+
+      <div class="doc-title">House Bill of Lading</div>
+      <div class="doc-subbar">
+        <span>B/L Number: <strong>{{shipmentNumber}}</strong></span>
+        <span>Date Issued: <strong>{{issuedDate}}</strong></span>
+      </div>
+
+      <div class="content">
+        <div class="columns">
+          <!-- Left column: parties -->
+          <div class="col">
+            <div class="box">
+              <div class="box-label">Shipper / Exporter</div>
+              <div class="box-body">
+                <div class="name">{{shipper.name}}</div>
+                <div>{{shipper.address}}</div>
+                <div>{{shipper.city}} {{shipper.state}} {{shipper.country}}</div>
+                <div>{{shipper.phone}}</div>
+                <div>{{shipper.email}}</div>
+              </div>
+            </div>
+
+            <div class="box">
+              <div class="box-label">Consignee</div>
+              <div class="box-body">
+                <div class="name">{{consignee.name}}</div>
+                <div>{{consignee.address}}</div>
+                <div>{{consignee.city}} {{consignee.country}}</div>
+              </div>
+            </div>
+
+            <div class="box">
+              <div class="box-label">Notify Party</div>
+              <div class="box-body">
+                {{#if notifyParty}}
+                  <div class="name">{{notifyParty.name}}</div>
+                {{else}}
+                  <div class="name">SAME AS CONSIGNEE</div>
+                {{/if}}
+              </div>
+            </div>
+          </div>
+
+          <!-- Right column: routing -->
+          <div class="col">
+            <div class="box">
+              <div class="box-label">Routing &amp; Transport</div>
+              <div class="box-body" style="padding: 0; min-height: 0;">
+                <div class="kv">
+                  <span class="k">Vessel / Voyage</span>
+                  <span class="v">{{vesselName}}</span>
+                </div>
+                <div class="kv">
+                  <span class="k">Port of Loading</span>
+                  <span class="v">{{originPort}}</span>
+                </div>
+                <div class="kv">
+                  <span class="k">Port of Discharge</span>
+                  <span class="v">{{destinationPort}}</span>
+                </div>
+                <div class="kv">
+                  <span class="k">ETD</span>
+                  <span class="v">{{etd}}</span>
+                </div>
+                <div class="kv">
+                  <span class="k">ETA</span>
+                  <span class="v">{{eta}}</span>
+                </div>
+                <div class="kv">
+                  <span class="k">Mode</span>
+                  <span class="v">{{mode}}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title">Description of Goods</div>
+        <table class="cargo">
+          <thead>
+            <tr>
+              <th style="width: 32%;">Description</th>
+              <th>HS Code</th>
+              <th>Packages</th>
+              <th>Gross Weight</th>
+              <th>Volume</th>
+              <th>Declared Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{goodsDescription}}</td>
+              <td>{{hsCode}}</td>
+              <td class="num">{{numPackages}} {{packageType}}</td>
+              <td class="num">{{grossWeightKg}} KG</td>
+              <td class="num">{{volumeCbm}} CBM</td>
+              <td class="num">USD {{declaredValueUsd}}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {{#if isHazmat}}
+          <div class="box hazmat">
+            <div class="box-label">⚠ Dangerous Goods / Hazardous Materials</div>
+            <div class="box-body">
+              <div class="hazmat-grid">
+                <div class="kv">
+                  <span class="k">UN Number</span>
+                  <span class="v">{{hazmatUnNumber}}</span>
+                </div>
+                <div class="kv">
+                  <span class="k">Class</span>
+                  <span class="v">{{hazmatClass}}</span>
+                </div>
+                <div class="kv">
+                  <span class="k">Proper Shipping Name</span>
+                  <span class="v">{{hazmatProperShippingName}}</span>
+                </div>
+                <div class="kv">
+                  <span class="k">Packing Group</span>
+                  <span class="v">{{hazmatPackingGroup}}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        {{/if}}
+
+        <div class="footer">
+          <div class="freight-terms">{{freightTerms}}</div>
+          <div class="signatures">
+            <div class="sig">
+              <div class="line"></div>
+              <div class="caption">Issued by</div>
+            </div>
+            <div class="sig">
+              <div class="line"></div>
+              <div class="caption">Date</div>
+            </div>
+            <div class="sig">
+              <div class="line"></div>
+              <div class="caption">Authorized Signature</div>
+            </div>
+          </div>
+          <div class="fine-print">
+            This is a non-negotiable copy unless marked as original.
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

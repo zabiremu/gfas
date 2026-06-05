@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Commercial Invoice INV-{{shipmentNumber}}</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        color: #1a2433;
+        font-size: 11px;
+        line-height: 1.4;
+        background: #ffffff;
+      }
+      .page {
+        width: 794px;
+        margin: 0 auto;
+        padding: 0 0 28px;
+      }
+      .masthead {
+        background: #07172e;
+        color: #ffffff;
+        padding: 20px 28px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .brand {
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: 0.4px;
+      }
+      .brand small {
+        display: block;
+        font-size: 10px;
+        font-weight: 400;
+        opacity: 0.75;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-top: 2px;
+      }
+      .masthead .doc-meta {
+        text-align: right;
+        font-size: 10px;
+        opacity: 0.85;
+      }
+      .doc-title {
+        text-align: center;
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: 3px;
+        padding: 14px 0 10px;
+        text-transform: uppercase;
+        border-bottom: 3px solid #07172e;
+      }
+      .doc-subbar {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 28px;
+        background: #eef2f7;
+        border-bottom: 1px solid #c9d4e0;
+        font-size: 11px;
+      }
+      .doc-subbar strong {
+        color: #07172e;
+      }
+      .content {
+        padding: 0 28px;
+      }
+      .columns {
+        display: flex;
+        gap: 14px;
+        margin-top: 16px;
+      }
+      .col {
+        flex: 1;
+      }
+      .box {
+        border: 1px solid #07172e;
+        margin-bottom: 12px;
+      }
+      .box-label {
+        background: #07172e;
+        color: #ffffff;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        padding: 5px 10px;
+      }
+      .box-body {
+        padding: 10px;
+        min-height: 70px;
+      }
+      .box-body .name {
+        font-weight: 700;
+        font-size: 12px;
+        margin-bottom: 3px;
+      }
+      .kv {
+        display: flex;
+        padding: 5px 10px;
+        border-bottom: 1px dashed #c9d4e0;
+      }
+      .kv:last-child {
+        border-bottom: none;
+      }
+      .kv .k {
+        width: 150px;
+        color: #5b6b80;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .kv .v {
+        flex: 1;
+        font-weight: 600;
+      }
+      .section-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #07172e;
+        margin: 18px 0 8px;
+      }
+      table.items {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      table.items th {
+        background: #07172e;
+        color: #ffffff;
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 8px 10px;
+        text-align: left;
+      }
+      table.items td {
+        border: 1px solid #c9d4e0;
+        padding: 10px;
+        vertical-align: top;
+        font-size: 11px;
+      }
+      table.items td.num,
+      table.items th.num {
+        text-align: right;
+        white-space: nowrap;
+      }
+      .totals {
+        margin-top: 14px;
+        display: flex;
+        justify-content: flex-end;
+      }
+      .totals table {
+        width: 320px;
+        border-collapse: collapse;
+      }
+      .totals td {
+        padding: 7px 12px;
+        font-size: 11px;
+      }
+      .totals tr td:first-child {
+        color: #5b6b80;
+        text-transform: uppercase;
+        font-size: 10px;
+        letter-spacing: 0.5px;
+      }
+      .totals tr td:last-child {
+        text-align: right;
+        font-weight: 600;
+      }
+      .totals tr.grand td {
+        background: #07172e;
+        color: #ffffff;
+        font-weight: 800;
+        font-size: 13px;
+      }
+      .declaration {
+        margin-top: 22px;
+        border: 1px solid #c9d4e0;
+        background: #f7f9fc;
+        padding: 12px 14px;
+        font-size: 10px;
+        color: #3a4759;
+      }
+      .footer {
+        margin-top: 22px;
+        border-top: 2px solid #07172e;
+        padding-top: 16px;
+      }
+      .signatures {
+        display: flex;
+        gap: 28px;
+      }
+      .sig {
+        flex: 1;
+      }
+      .sig .line {
+        border-bottom: 1px solid #1a2433;
+        height: 34px;
+      }
+      .sig .caption {
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #5b6b80;
+        margin-top: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="masthead">
+        <div class="brand">
+          GFAS
+          <small>Global Freight Automation System</small>
+        </div>
+        <div class="doc-meta">
+          Invoice <strong>INV-{{shipmentNumber}}</strong><br />
+          {{issuedDate}}
+        </div>
+      </div>
+
+      <div class="doc-title">Commercial Invoice</div>
+      <div class="doc-subbar">
+        <span>Invoice Number: <strong>INV-{{shipmentNumber}}</strong></span>
+        <span>Invoice Date: <strong>{{issuedDate}}</strong></span>
+      </div>
+
+      <div class="content">
+        <div class="columns">
+          <div class="col">
+            <div class="box">
+              <div class="box-label">Seller</div>
+              <div class="box-body">
+                <div class="name">{{shipper.name}}</div>
+                <div>{{shipper.address}}</div>
+                <div>{{shipper.city}} {{shipper.state}} {{shipper.country}}</div>
+                <div>{{shipper.phone}}</div>
+                <div>{{shipper.email}}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="box">
+              <div class="box-label">Buyer / Consignee</div>
+              <div class="box-body">
+                <div class="name">{{consignee.name}}</div>
+                <div>{{consignee.address}}</div>
+                <div>{{consignee.city}} {{consignee.state}} {{consignee.country}}</div>
+                <div>{{consignee.phone}}</div>
+                <div>{{consignee.email}}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="box-label">Shipment Details</div>
+          <div class="box-body" style="padding: 0; min-height: 0;">
+            <div class="kv">
+              <span class="k">Country of Origin</span>
+              <span class="v">{{countryOfOrigin}}</span>
+            </div>
+            <div class="kv">
+              <span class="k">Port of Loading</span>
+              <span class="v">{{originPort}}</span>
+            </div>
+            <div class="kv">
+              <span class="k">Port of Discharge</span>
+              <span class="v">{{destinationPort}}</span>
+            </div>
+            <div class="kv">
+              <span class="k">Mode of Transport</span>
+              <span class="v">{{mode}}</span>
+            </div>
+            <div class="kv">
+              <span class="k">ETD</span>
+              <span class="v">{{etd}}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title">Invoice Line Items</div>
+        <table class="items">
+          <thead>
+            <tr>
+              <th style="width: 34%;">Description</th>
+              <th>HS Code</th>
+              <th class="num">Qty</th>
+              <th>Unit</th>
+              <th class="num">Unit Price</th>
+              <th class="num">Total Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{goodsDescription}}</td>
+              <td>{{hsCode}}</td>
+              <td class="num">{{numPackages}}</td>
+              <td>{{packageType}}</td>
+              <td class="num">USD {{unitPrice}}</td>
+              <td class="num">USD {{declaredValueUsd}}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="totals">
+          <table>
+            <tr>
+              <td>Subtotal</td>
+              <td>USD {{subtotal}}</td>
+            </tr>
+            <tr>
+              <td>Freight</td>
+              <td>USD {{freightCost}}</td>
+            </tr>
+            <tr>
+              <td>Insurance</td>
+              <td>USD {{insuranceCost}}</td>
+            </tr>
+            <tr class="grand">
+              <td>Total</td>
+              <td>USD {{totalAmount}}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="declaration">
+          I/We hereby certify that the information on this invoice is true and
+          correct and that the contents of this shipment are as stated above.
+        </div>
+
+        <div class="footer">
+          <div class="signatures">
+            <div class="sig">
+              <div class="line"></div>
+              <div class="caption">Date</div>
+            </div>
+            <div class="sig">
+              <div class="line"></div>
+              <div class="caption">Authorized Signature</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
