@@ -93,7 +93,7 @@ async function main(): Promise<void> {
     const users = [
       {
         id: USER.admin,
-        email: 'admin@gtp.com',
+        email: '  ',
         password: 'Admin@123',
         firstName: 'Sarah',
         lastName: 'Mitchell',

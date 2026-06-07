@@ -2,7 +2,7 @@ import axios from 'axios';
 import { keysToCamel } from './case';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://gfas-production.up.railway.app/api',
 });
 
 // Attach token to every request
