@@ -70,6 +70,44 @@ export interface TrackingEvent {
   notes?: string;
 }
 
+export type WarehouseStatus = 'IN_STORAGE' | 'RELEASED';
+
+export interface MovementLogEntry {
+  step?: number;
+  action: string;
+  location?: string | null;
+  time?: string;
+  loggedBy?: string;
+  note?: string;
+}
+
+export interface WarehouseEntry {
+  id: string;
+  shipmentId?: string | null;
+  customerName: string;
+  batchNumber: string;
+  lotNumber?: string | null;
+  numPallets: number;
+  weightKg: number;
+  isHazmat: boolean;
+  hazmatClass?: string | null;
+  hazmatUnNumber?: string | null;
+  zone?: string | null;
+  aisle?: string | null;
+  rack?: string | null;
+  level?: string | null;
+  tempMin?: number | null;
+  tempMax?: number | null;
+  storageStartDate: string;
+  storageEndDate?: string | null;
+  status: WarehouseStatus;
+  movementLog?: MovementLogEntry[];
+  releasedAt?: string | null;
+  releasedBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DashboardStats {
   activeShipments: number;
   inTransit: number;

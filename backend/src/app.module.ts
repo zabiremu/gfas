@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { PartiesModule } from './parties/parties.module';
 import { ShipmentsModule } from './shipments/shipments.module';
 import { DocumentsModule } from './documents/documents.module';
+import { WarehouseModule } from './warehouse/warehouse.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { DocumentsModule } from './documents/documents.module';
     ShipmentsModule,
     PartiesModule,
     DocumentsModule,
+    WarehouseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -20,13 +20,16 @@ import {
   type AuthUser,
 } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { DocumentStatus } from '../entities/document.entity';
+import { UserRole } from '../entities/user.entity';
 import { DocumentsService } from './documents.service';
 import { GenerateDocumentDto } from './dto/generate-document.dto';
 
 @ApiTags('documents')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('documents')
 export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService) {}
@@ -46,6 +49,7 @@ export class DocumentsController {
   }
 
   @Post('generate/:shipmentId')
+  @Roles(UserRole.ADMIN, UserRole.AGENT)
   generate(
     @CurrentUser() user: AuthUser,
     @Param('shipmentId') shipmentId: string,
@@ -60,6 +64,7 @@ export class DocumentsController {
   }
 
   @Patch(':id/void')
+  @Roles(UserRole.ADMIN, UserRole.AGENT)
   voidDocument(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.documentsService.voidDocument(user.tenantId, id);
   }

@@ -14,14 +14,17 @@ import {
   type AuthUser,
 } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { PartyRole } from '../entities/party.entity';
+import { UserRole } from '../entities/user.entity';
 import { CreatePartyDto } from './dto/create-party.dto';
 import { UpdatePartyDto } from './dto/update-party.dto';
 import { PartiesService } from './parties.service';
 
 @ApiTags('parties')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('parties')
 export class PartiesController {
   constructor(private readonly partiesService: PartiesService) {}
@@ -36,6 +39,7 @@ export class PartiesController {
   }
 
   @Post()
+  @Roles(UserRole.ADMIN, UserRole.AGENT)
   create(@CurrentUser() user: AuthUser, @Body() dto: CreatePartyDto) {
     return this.partiesService.create(user.tenantId, dto);
   }
@@ -46,6 +50,7 @@ export class PartiesController {
   }
 
   @Put(':id')
+  @Roles(UserRole.ADMIN, UserRole.AGENT)
   update(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,

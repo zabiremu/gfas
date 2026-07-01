@@ -15,7 +15,10 @@ import {
   type AuthUser,
 } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { ShipmentMode, ShipmentStatus } from '../entities/shipment.entity';
+import { UserRole } from '../entities/user.entity';
 import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { CreateTrackingEventDto } from './dto/create-tracking-event.dto';
 import {
@@ -26,7 +29,7 @@ import { ShipmentsService } from './shipments.service';
 
 @ApiTags('shipments')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('shipments')
 export class ShipmentsController {
   constructor(private readonly shipmentsService: ShipmentsService) {}
@@ -42,6 +45,7 @@ export class ShipmentsController {
   }
 
   @Post()
+  @Roles(UserRole.ADMIN, UserRole.AGENT)
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateShipmentDto) {
     return this.shipmentsService.create(user.tenantId, user.userId, dto);
   }
@@ -58,6 +62,7 @@ export class ShipmentsController {
   }
 
   @Put(':id')
+  @Roles(UserRole.ADMIN, UserRole.AGENT)
   update(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
@@ -67,6 +72,7 @@ export class ShipmentsController {
   }
 
   @Patch(':id/status')
+  @Roles(UserRole.ADMIN, UserRole.AGENT)
   updateStatus(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
@@ -83,6 +89,7 @@ export class ShipmentsController {
   }
 
   @Post(':id/tracking')
+  @Roles(UserRole.ADMIN, UserRole.AGENT, UserRole.WAREHOUSE)
   async addTracking(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
