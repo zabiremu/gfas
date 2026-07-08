@@ -23,7 +23,10 @@ import { WarehouseModule } from './warehouse/warehouse.module';
       // array. Covers: Tenant, User, Party, Shipment, ShipmentDocument,
       // TrackingEvent, WarehouseEntry.
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: true,
+      // WARNING: synchronize auto-alters the DB schema on every boot and can
+      // silently drop columns/data. It is unsafe in production — use TypeORM
+      // migrations there instead. Gated to non-production only.
+      synchronize: process.env.NODE_ENV !== 'production',
       logging: false,
     }),
     AuthModule,

@@ -1,0 +1,80 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  # Directory on the EC2 host where compose + images are staged.
+  DEPLOY_DIR: /home/${{ secrets.EC2_USER }}/gfas
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          tags: gfas-backend:latest
+          outputs: type=docker,dest=/tmp/gfas-backend.tar
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          tags: gfas-frontend:latest
+          build-args: |
+            NEXT_PUBLIC_API_URL=/api
+          outputs: type=docker,dest=/tmp/gfas-frontend.tar
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Copy images and deploy files to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "/tmp/gfas-backend.tar,/tmp/gfas-frontend.tar,docker-compose.prod.yml,nginx.conf"
+          target: ${{ env.DEPLOY_DIR }}
+          strip_components: 0
+
+      - name: Load images and restart stack
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ env.DEPLOY_DIR }}
+
+            # SCP places files from an absolute source under target/tmp/*.
+            docker load -i tmp/gfas-backend.tar
+            docker load -i tmp/gfas-frontend.tar
+
+            # Write runtime env from GitHub Secrets (not committed to the repo).
+            cat > .env <<'EOF'
+            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            EOF
+
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker image prune -f
+            rm -f tmp/gfas-backend.tar tmp/gfas-frontend.tar
