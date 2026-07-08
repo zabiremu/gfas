@@ -64,6 +64,21 @@ jobs:
             docker load -i gfas-backend.tar
             docker load -i gfas-frontend.tar
 
+            # Fail fast with a clear message if required secrets are missing —
+            # empty POSTGRES_PASSWORD makes Postgres refuse to start.
+            for v in POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB JWT_SECRET; do
+              case "$v" in
+                POSTGRES_USER) val="${{ secrets.POSTGRES_USER }}" ;;
+                POSTGRES_PASSWORD) val="${{ secrets.POSTGRES_PASSWORD }}" ;;
+                POSTGRES_DB) val="${{ secrets.POSTGRES_DB }}" ;;
+                JWT_SECRET) val="${{ secrets.JWT_SECRET }}" ;;
+              esac
+              if [ -z "$val" ]; then
+                echo "ERROR: required GitHub secret '$v' is empty/unset."
+                exit 1
+              fi
+            done
+
             # Write runtime env from GitHub Secrets (not committed to the repo).
             cat > .env <<'EOF'
             POSTGRES_USER=${{ secrets.POSTGRES_USER }}
@@ -73,6 +88,12 @@ jobs:
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             EOF
 
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            if ! docker compose -f docker-compose.prod.yml up -d --remove-orphans; then
+              echo "===== docker compose ps ====="
+              docker compose -f docker-compose.prod.yml ps
+              echo "===== postgres logs ====="
+              docker compose -f docker-compose.prod.yml logs --tail=50 postgres
+              exit 1
+            fi
             docker image prune -f
             rm -f gfas-backend.tar gfas-frontend.tar
