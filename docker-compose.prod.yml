@@ -1,25 +1,4 @@
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: gfas_postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      # Use the container's own env vars ($$ escapes compose interpolation) so
-      # the check works even if the host .env isn't visible at parse time.
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    networks:
-      - gfas
-
   redis:
     image: redis:7-alpine
     container_name: gfas_redis
@@ -33,16 +12,13 @@ services:
     image: gfas-backend:latest
     container_name: gfas_backend
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
     env_file:
       - .env
     environment:
       NODE_ENV: production
       PORT: 3001
-      # Prefer an explicit DATABASE_URL secret; fall back to the compose values.
-      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}}
+      # Supabase (Postgres, Singapore region, Transaction Pooler) connection string.
+      DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -78,7 +54,6 @@ services:
       - gfas
 
 volumes:
-  postgres_data:
   redis_data:
   backend_uploads:
 
