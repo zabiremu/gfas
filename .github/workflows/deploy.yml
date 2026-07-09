@@ -66,10 +66,11 @@ jobs:
 
             # Fail fast with a clear message if required secrets are missing —
             # an empty DATABASE_URL means the backend can't reach Supabase.
-            for v in DATABASE_URL JWT_SECRET; do
+            for v in DATABASE_URL JWT_SECRET JWT_REFRESH_SECRET; do
               case "$v" in
                 DATABASE_URL) val="${{ secrets.DATABASE_URL }}" ;;
                 JWT_SECRET) val="${{ secrets.JWT_SECRET }}" ;;
+                JWT_REFRESH_SECRET) val="${{ secrets.JWT_REFRESH_SECRET }}" ;;
               esac
               if [ -z "$val" ]; then
                 echo "ERROR: required GitHub secret '$v' is empty/unset."
@@ -81,6 +82,7 @@ jobs:
             cat > .env <<'EOF'
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
+            JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
             EOF
 
             if ! docker compose -f docker-compose.prod.yml up -d --remove-orphans; then
