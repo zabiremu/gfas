@@ -13,7 +13,7 @@ import Toast, { type ToastType } from '@/components/ui/Toast';
 
 // Spec-provided direct download (bypasses axios; binary blob).
 async function downloadDocument(docId: string, docType: string) {
-  const token = localStorage.getItem('gfas_token');
+  const token = localStorage.getItem('amovix_token');
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/documents/${docId}/download`,
     { headers: { Authorization: `Bearer ${token}` } },

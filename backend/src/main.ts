@@ -24,7 +24,7 @@ async function bootstrap() {
   });
 
   const config = new DocumentBuilder()
-    .setTitle('GFAS API')
+    .setTitle('Amovix API')
     .setDescription('Global Freight Automation System API')
     .setVersion('2.0')
     .addBearerAuth()
@@ -34,7 +34,7 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3001;
   await app.listen(port, '0.0.0.0');
-  console.log(`🚀 GFAS Backend running on http://localhost:${port}/api`);
+  console.log(`🚀 Amovix Backend running on http://localhost:${port}/api`);
   console.log(`📚 Swagger docs at http://localhost:${port}/api/docs`);
 }
 bootstrap();

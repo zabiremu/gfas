@@ -1,7 +1,7 @@
 /**
  * Recursively converts object keys from snake_case to camelCase.
  *
- * The GFAS backend serializes TypeORM entities with snake_case columns
+ * The Amovix backend serializes TypeORM entities with snake_case columns
  * (e.g. `shipment_number`), while the frontend types are camelCase. This
  * normalizes API responses so consumers always see camelCase keys.
  *

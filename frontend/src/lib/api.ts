@@ -8,7 +8,7 @@ const api = axios.create({
 // Attach token to every request
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('gfas_token');
+    const token = localStorage.getItem('amovix_token');
     if (token) config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -25,8 +25,8 @@ api.interceptors.response.use(
   // Redirect to login on 401
   (error) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('gfas_token');
-      localStorage.removeItem('gfas_user');
+      localStorage.removeItem('amovix_token');
+      localStorage.removeItem('amovix_user');
       window.location.href = '/login';
     }
     return Promise.reject(error);

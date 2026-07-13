@@ -1,27 +1,27 @@
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: gfas_postgres
+    container_name: amovix_postgres
     restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: gfas
-      POSTGRES_PASSWORD: gfas123
-      POSTGRES_DB: gfas_db
+      POSTGRES_USER: amovix
+      POSTGRES_PASSWORD: amovix123
+      POSTGRES_DB: amovix_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
-    container_name: gfas_redis
+    container_name: amovix_redis
     restart: unless-stopped
     ports:
       - "6379:6379"
 
   mailhog:
     image: mailhog/mailhog
-    container_name: gfas_mailhog
+    container_name: amovix_mailhog
     restart: unless-stopped
     ports:
       - "1025:1025"
@@ -29,7 +29,7 @@ services:
 
   minio:
     image: minio/minio
-    container_name: gfas_minio
+    container_name: amovix_minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     ports:

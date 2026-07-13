@@ -71,7 +71,7 @@ export default function LoginPage() {
         {/* Brand */}
         <div className="mb-8 text-center">
           <div className="text-3xl font-extrabold tracking-tight text-[#07172E]">
-            <span className="mr-1">⚓</span>GFAS
+            <span className="mr-1">⚓</span>Amovix 
           </div>
           <p className="mt-1 text-sm text-gray-500">
             Global Freight Automation System

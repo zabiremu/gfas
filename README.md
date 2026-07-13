@@ -1,4 +1,4 @@
-# GFAS — Global Freight Automation System
+# Amovix — Global Freight Automation System
 ### Multi-tenant SaaS for Freight Forwarders & 3PLs
 
 ## Quick Start (One Command)

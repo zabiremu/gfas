@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "🚀 Starting GFAS Demo..."
+echo "🚀 Starting Amovix Demo..."
 echo ""
 echo "Step 1: Starting Docker services (PostgreSQL, Redis, MailHog, MinIO)..."
 docker-compose up -d
@@ -31,7 +31,7 @@ npm run dev &
 FRONTEND_PID=$!
 
 echo ""
-echo "✅ GFAS Demo is running!"
+echo "✅ Amovix Demo is running!"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🌐 Frontend:    http://localhost:3000"

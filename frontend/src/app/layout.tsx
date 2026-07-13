@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "GFAS — Global Freight Automation System",
+  title: "Amovix — Global Freight Automation System",
   description: "Global Freight Automation System",
 };
 

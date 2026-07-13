@@ -1,7 +1,7 @@
 #!/bin/bash
 BASE="http://localhost:3001/api"
 
-echo "=== Testing GFAS API ==="
+echo "=== Testing Amovix API ==="
 
 echo ""
 echo "1. Login as Admin..."

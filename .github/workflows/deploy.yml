@@ -7,7 +7,7 @@ on:
 
 env:
   # Directory on the EC2 host where compose + images are staged.
-  DEPLOY_DIR: /home/${{ secrets.EC2_USER }}/gfas
+  DEPLOY_DIR: /home/${{ secrets.EC2_USER }}/amovix
 
 jobs:
   build-and-deploy:
@@ -25,8 +25,8 @@ jobs:
         with:
           context: ./backend
           file: ./backend/Dockerfile
-          tags: gfas-backend:latest
-          outputs: type=docker,dest=gfas-backend.tar
+          tags: amovix-backend:latest
+          outputs: type=docker,dest=amovix-backend.tar
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
@@ -35,10 +35,10 @@ jobs:
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
-          tags: gfas-frontend:latest
+          tags: amovix-frontend:latest
           build-args: |
             NEXT_PUBLIC_API_URL=/api
-          outputs: type=docker,dest=gfas-frontend.tar
+          outputs: type=docker,dest=amovix-frontend.tar
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
@@ -48,7 +48,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "gfas-backend.tar,gfas-frontend.tar,docker-compose.prod.yml,nginx.conf"
+          source: "amovix-backend.tar,amovix-frontend.tar,docker-compose.prod.yml,nginx.conf"
           target: ${{ env.DEPLOY_DIR }}
 
       - name: Load images and restart stack
@@ -61,8 +61,8 @@ jobs:
             set -e
             cd ${{ env.DEPLOY_DIR }}
 
-            docker load -i gfas-backend.tar
-            docker load -i gfas-frontend.tar
+            docker load -i amovix-backend.tar
+            docker load -i amovix-frontend.tar
 
             # Fail fast with a clear message if required secrets are missing —
             # an empty DATABASE_URL means the backend can't reach Supabase.
@@ -93,4 +93,4 @@ jobs:
               exit 1
             fi
             docker image prune -f
-            rm -f gfas-backend.tar gfas-frontend.tar
+            rm -f amovix-backend.tar amovix-frontend.tar

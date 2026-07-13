@@ -1,5 +1,5 @@
 /**
- * GFAS demo seed script.
+ * Amovix demo seed script.
  *
  * Connects directly to PostgreSQL with the `pg` driver (no Nest bootstrap) and
  * populates a single demo tenant with users, parties, shipments, documents,

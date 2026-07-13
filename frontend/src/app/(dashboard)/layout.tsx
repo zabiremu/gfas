@@ -41,7 +41,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     initAuth();
-    if (!localStorage.getItem('gfas_token')) {
+    if (!localStorage.getItem('amovix_token')) {
       router.replace('/login');
     } else {
       setReady(true);
@@ -80,7 +80,7 @@ export default function DashboardLayout({
       <aside className="fixed inset-y-0 left-0 z-20 flex w-[260px] flex-col bg-[#07172E] text-white">
         <div className="border-b border-white/10 px-5 py-5">
           <div className="text-xl font-extrabold">
-            <span className="mr-1">⚓</span>GFAS
+            <span className="mr-1">⚓</span>Amovix
           </div>
           <div className="mt-0.5 text-[11px] text-gray-400">
             Global Freight Automation System
