@@ -8,6 +8,9 @@ on:
 env:
   # Directory on the EC2 host where compose + images are staged.
   DEPLOY_DIR: /home/${{ secrets.EC2_USER }}/amovix
+  # Pre-rename deploy directory; torn down below so its stack doesn't keep
+  # holding port 80 with the old GFAS-branded images.
+  OLD_DEPLOY_DIR: /home/${{ secrets.EC2_USER }}/gfas
 
 jobs:
   build-and-deploy:
@@ -59,6 +62,14 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
+
+            # Tear down the stack left running under the pre-rename directory
+            # so its nginx container releases port 80 for the new one.
+            if [ -f "${{ env.OLD_DEPLOY_DIR }}/docker-compose.prod.yml" ]; then
+              cd ${{ env.OLD_DEPLOY_DIR }}
+              docker compose -f docker-compose.prod.yml down --remove-orphans
+            fi
+
             cd ${{ env.DEPLOY_DIR }}
 
             docker load -i amovix-backend.tar
