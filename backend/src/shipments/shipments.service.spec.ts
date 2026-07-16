@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { CargoItem } from '../entities/cargo-item.entity';
 import { PartyRole } from '../entities/party.entity';
 import {
@@ -422,6 +422,153 @@ describe('ShipmentsService', () => {
         ShipmentStatus.BOOKED,
       );
       expect(result.status).toBe(ShipmentStatus.BOOKED);
+    });
+  });
+
+  // Simulates two tenants sharing the same mock repository by backing
+  // findOne/find with an in-memory dataset filtered by `where.tenant_id`,
+  // rather than just asserting the repository was *called* with the right
+  // where clause — this way a query for tenant B's id genuinely cannot see
+  // tenant A's rows, the same failure mode a missing tenant_id filter in the
+  // real service would produce.
+  describe('tenant isolation', () => {
+    const tenantA = 'tenant-a';
+    const tenantB = 'tenant-b';
+
+    const shipmentsDb: Shipment[] = [
+      {
+        id: 's-a1',
+        tenant_id: tenantA,
+        shipment_number: 'SHP-A1',
+        status: ShipmentStatus.DRAFT,
+      } as Shipment,
+      {
+        id: 's-b1',
+        tenant_id: tenantB,
+        shipment_number: 'SHP-B1',
+        status: ShipmentStatus.DRAFT,
+      } as Shipment,
+    ];
+
+    beforeEach(() => {
+      shipmentRepo.findOne!.mockImplementation(
+        async ({ where }: { where: { id: string; tenant_id: string } }) =>
+          shipmentsDb.find(
+            (s) => s.id === where.id && s.tenant_id === where.tenant_id,
+          ) ?? null,
+      );
+      shipmentRepo.find!.mockImplementation(
+        async ({ where }: { where: { tenant_id: string } }) =>
+          shipmentsDb.filter((s) => s.tenant_id === where.tenant_id),
+      );
+      shipmentRepo.save!.mockImplementation(async (s) => s);
+    });
+
+    it('findOne returns the shipment to its own tenant', async () => {
+      const result = await service.findOne(tenantA, 's-a1');
+      expect(result.id).toBe('s-a1');
+    });
+
+    it('findOne throws NotFoundException when tenant B requests tenant A\'s shipment', async () => {
+      await expect(service.findOne(tenantB, 's-a1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('findAll never returns another tenant\'s shipments', async () => {
+      const resultA = await service.findAll(tenantA);
+      const resultB = await service.findAll(tenantB);
+
+      expect(resultA.map((s) => s.id)).toEqual(['s-a1']);
+      expect(resultB.map((s) => s.id)).toEqual(['s-b1']);
+      expect(resultA.some((s) => s.tenant_id === tenantB)).toBe(false);
+      expect(resultB.some((s) => s.tenant_id === tenantA)).toBe(false);
+    });
+
+    it('updateStatus cannot mutate a shipment belonging to a different tenant', async () => {
+      await expect(
+        service.updateStatus(tenantB, 's-a1', ShipmentStatus.BOOKED),
+      ).rejects.toThrow(NotFoundException);
+      // The tenant-A row is untouched — save() was never reached.
+      expect(shipmentRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('update cannot mutate a shipment belonging to a different tenant', async () => {
+      await expect(
+        service.update(tenantB, 's-a1', { originPort: 'HACKED' } as any),
+      ).rejects.toThrow(NotFoundException);
+      expect(shipmentRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getDashboardStats', () => {
+    it('aggregates counts and recent shipments scoped to the tenant', async () => {
+      // Six sequential shipmentRepository.count() calls inside Promise.all,
+      // in the exact order the service issues them.
+      shipmentRepo.count!
+        .mockResolvedValueOnce(42) // activeShipments (BOOKED + IN_TRANSIT)
+        .mockResolvedValueOnce(17) // inTransit
+        .mockResolvedValueOnce(10) // in-transit, OCEAN
+        .mockResolvedValueOnce(4) // in-transit, AIR
+        .mockResolvedValueOnce(3) // in-transit, INLAND
+        .mockResolvedValueOnce(2); // customsHolds
+
+      // findAll() (used for recentShipments) is a real call into
+      // shipmentRepository.find — return more than 10 to verify slicing.
+      const manyShipments = Array.from({ length: 12 }, (_, i) => ({
+        id: `s${i}`,
+        tenant_id: tenantId,
+      })) as Shipment[];
+      shipmentRepo.find!.mockResolvedValue(manyShipments);
+
+      const stats = await service.getDashboardStats(tenantId);
+
+      expect(stats.activeShipments).toBe(42);
+      expect(stats.inTransit).toBe(17);
+      expect(stats.inTransitByMode).toEqual({ OCEAN: 10, AIR: 4, INLAND: 3 });
+      expect(stats.customsHolds).toBe(2);
+      expect(stats.docsPending).toBe(0);
+
+      // recentShipments is capped at 10 even though findAll returned 12.
+      expect(stats.recentShipments).toHaveLength(10);
+      expect(stats.recentShipments.map((s) => s.id)).toEqual(
+        manyShipments.slice(0, 10).map((s) => s.id),
+      );
+    });
+
+    it('scopes every count query to the requesting tenant', async () => {
+      shipmentRepo.count!.mockResolvedValue(0);
+      shipmentRepo.find!.mockResolvedValue([]);
+
+      await service.getDashboardStats(tenantId);
+
+      expect(shipmentRepo.count).toHaveBeenCalledTimes(6);
+      for (const call of shipmentRepo.count!.mock.calls) {
+        expect(call[0]).toMatchObject({
+          where: expect.objectContaining({ tenant_id: tenantId }),
+        });
+      }
+      // activeShipments unions BOOKED + IN_TRANSIT via an `In(...)` operator.
+      expect(shipmentRepo.count).toHaveBeenNthCalledWith(1, {
+        where: {
+          tenant_id: tenantId,
+          status: In([ShipmentStatus.BOOKED, ShipmentStatus.IN_TRANSIT]),
+        },
+      });
+    });
+
+    it('never includes another tenant\'s shipments in recentShipments', async () => {
+      shipmentRepo.count!.mockResolvedValue(0);
+      shipmentRepo.find!.mockImplementation(
+        async ({ where }: { where: { tenant_id: string } }) =>
+          [
+            { id: 's-a1', tenant_id: 'tenant-a' },
+            { id: 's-b1', tenant_id: 'tenant-b' },
+          ].filter((s) => s.tenant_id === where.tenant_id) as Shipment[],
+      );
+
+      const statsA = await service.getDashboardStats('tenant-a');
+      expect(statsA.recentShipments.map((s) => s.id)).toEqual(['s-a1']);
     });
   });
 });
