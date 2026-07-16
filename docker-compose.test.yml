@@ -1,0 +1,16 @@
+services:
+  postgres_test:
+    image: postgres:15-alpine
+    container_name: amovix_postgres_test
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: amovix
+      POSTGRES_PASSWORD: amovix123
+      POSTGRES_DB: amovix_test
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_test_data:

@@ -8,6 +8,7 @@ import { PartiesModule } from './parties/parties.module';
 import { ShipmentsModule } from './shipments/shipments.module';
 import { DocumentsModule } from './documents/documents.module';
 import { WarehouseModule } from './warehouse/warehouse.module';
+import { FinanceModule } from './finance/finance.module';
 
 @Module({
   imports: [
@@ -25,8 +26,11 @@ import { WarehouseModule } from './warehouse/warehouse.module';
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       // WARNING: synchronize auto-alters the DB schema on every boot and can
       // silently drop columns/data. It is unsafe in production — use TypeORM
-      // migrations there instead. Gated to non-production only.
-      synchronize: process.env.NODE_ENV !== 'production',
+      // migrations there instead. Also disabled in `test` so e2e runs are
+      // provisioned identically to production (migrations only, no drift).
+      synchronize: !['production', 'test'].includes(
+        process.env.NODE_ENV ?? '',
+      ),
       logging: false,
     }),
     AuthModule,
@@ -34,6 +38,7 @@ import { WarehouseModule } from './warehouse/warehouse.module';
     PartiesModule,
     DocumentsModule,
     WarehouseModule,
+    FinanceModule,
   ],
   controllers: [AppController],
   providers: [AppService],
