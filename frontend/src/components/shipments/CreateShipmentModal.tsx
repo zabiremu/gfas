@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import api from '@/lib/api';
-import type { Party, PartyRole, ShipmentMode } from '@/types';
+import type { Party, PartyRole, ShipmentDirection, ShipmentMode } from '@/types';
 
 interface CreateShipmentModalProps {
   open: boolean;
@@ -16,6 +16,12 @@ const MODES: { value: ShipmentMode; emoji: string; label: string }[] = [
   { value: 'OCEAN', emoji: '🚢', label: 'Ocean' },
   { value: 'AIR', emoji: '✈️', label: 'Air' },
   { value: 'INLAND', emoji: '🚛', label: 'Inland' },
+];
+
+const DIRECTIONS: { value: ShipmentDirection; label: string }[] = [
+  { value: 'IMPORT', label: 'Import' },
+  { value: 'EXPORT', label: 'Export' },
+  { value: 'DOMESTIC', label: 'Domestic' },
 ];
 
 const PACKAGE_TYPES = [
@@ -30,6 +36,7 @@ const PACKAGE_TYPES = [
 
 interface FormState {
   mode: ShipmentMode | '';
+  direction: ShipmentDirection | '';
   originPort: string;
   destinationPort: string;
   etd: string;
@@ -57,6 +64,7 @@ interface FormState {
 
 const INITIAL: FormState = {
   mode: '',
+  direction: '',
   originPort: '',
   destinationPort: '',
   etd: '',
@@ -232,6 +240,7 @@ export default function CreateShipmentModal({
     const e: Record<string, string> = {};
     if (s === 1) {
       if (!form.mode) e.mode = 'Select a transport mode';
+      if (!form.direction) e.direction = 'Select a shipment direction';
       if (!form.originPort.trim()) e.originPort = 'Origin port is required';
       if (!form.destinationPort.trim())
         e.destinationPort = 'Destination port is required';
@@ -262,6 +271,7 @@ export default function CreateShipmentModal({
   const buildPayload = () => {
     const p: Record<string, unknown> = {
       mode: form.mode,
+      direction: form.direction,
       originPort: form.originPort.trim(),
       destinationPort: form.destinationPort.trim(),
       goodsDescription: form.goodsDescription.trim(),
@@ -388,6 +398,32 @@ export default function CreateShipmentModal({
                 </div>
                 {errors.mode && (
                   <p className="mt-1 text-xs text-red-600">{errors.mode}</p>
+                )}
+              </div>
+
+              <div>
+                <label className={labelClass}>Direction *</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {DIRECTIONS.map((d) => {
+                    const active = form.direction === d.value;
+                    return (
+                      <button
+                        key={d.value}
+                        type="button"
+                        onClick={() => set('direction', d.value)}
+                        className={`rounded-xl border-2 py-2 text-sm font-medium transition ${
+                          active
+                            ? 'border-[#1559C9] bg-[#1559C9]/10 text-[#1559C9]'
+                            : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        {d.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {errors.direction && (
+                  <p className="mt-1 text-xs text-red-600">{errors.direction}</p>
                 )}
               </div>
 

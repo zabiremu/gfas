@@ -14,6 +14,9 @@ export class TrackingEvent {
   id: string;
 
   @Column({ type: 'uuid' })
+  tenant_id: string;
+
+  @Column({ type: 'uuid' })
   shipment_id: string;
 
   @ManyToOne(() => Shipment, (shipment) => shipment.trackingEvents)

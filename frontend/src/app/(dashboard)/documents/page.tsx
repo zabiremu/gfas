@@ -38,11 +38,13 @@ function extractError(err: unknown): string {
 
 const DOC_ICON: Record<string, string> = {
   HOUSE_BILL_OF_LADING: '🚢',
+  MASTER_BILL_OF_LADING: '🚢',
+  AIR_WAYBILL: '✈️',
   COMMERCIAL_INVOICE: '💰',
+  PROFORMA_INVOICE: '💵',
   PACKING_LIST: '📋',
   CERTIFICATE_OF_ORIGIN: '🏛️',
   IMO_DGD: '☢️',
-  AIR_WAYBILL: '✈️',
 };
 
 const STATUS_OPTIONS: { value: '' | DocumentStatus; label: string }[] = [
@@ -54,14 +56,19 @@ const STATUS_OPTIONS: { value: '' | DocumentStatus; label: string }[] = [
   { value: 'VOID', label: 'Void' },
 ];
 
+// Mirrors backend/src/documents/doc-type.constants.ts (DOC_TYPES) — keep in
+// sync; no shared package exists between frontend and backend to do this
+// automatically.
 const DOC_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'All Types' },
   { value: 'HOUSE_BILL_OF_LADING', label: 'House Bill of Lading' },
+  { value: 'MASTER_BILL_OF_LADING', label: 'Master Bill of Lading' },
+  { value: 'AIR_WAYBILL', label: 'Air Waybill' },
   { value: 'COMMERCIAL_INVOICE', label: 'Commercial Invoice' },
+  { value: 'PROFORMA_INVOICE', label: 'Proforma Invoice' },
   { value: 'PACKING_LIST', label: 'Packing List' },
   { value: 'CERTIFICATE_OF_ORIGIN', label: 'Certificate of Origin' },
-  { value: 'IMO_DGD', label: 'IMO DGD' },
-  { value: 'AIR_WAYBILL', label: 'Air Waybill' },
+  { value: 'IMO_DGD', label: 'IMO Dangerous Goods Declaration' },
 ];
 
 const selectClass =

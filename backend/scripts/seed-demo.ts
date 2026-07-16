@@ -202,7 +202,7 @@ async function main(): Promise<void> {
     for (const p of parties) {
       await client.query(
         `INSERT INTO parties
-           (id, tenant_id, name, role, address, city, state, country, postal_code, phone, email)
+           (id, tenant_id, name, default_role, address, city, state, country, postal_code, phone, email)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
         [
           p.id,
@@ -368,21 +368,17 @@ async function main(): Promise<void> {
     for (const s of shipments) {
       await client.query(
         `INSERT INTO shipments (
-           id, tenant_id, shipment_number, mode, status, origin_port, destination_port,
-           etd, eta, vessel_name, flight_number, mawb_number, goods_description, hs_code,
-           country_of_origin, gross_weight_kg, volume_cbm, num_packages, package_type,
-           declared_value_usd, is_hazmat, hazmat_un_number, hazmat_proper_shipping_name,
-           hazmat_class, hazmat_packing_group, shipper_id, consignee_id, notify_party_id,
-           created_by
+           id, tenant_id, shipment_number, mode, direction, status, origin_port, destination_port,
+           etd, eta, vessel_name, flight_number, mawb_number, created_by
          ) VALUES (
-           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
-           $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
+           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
          )`,
         [
           s.id,
           TENANT_ID,
           s.number,
           s.mode,
+          'EXPORT', // direction: demo shipments are all outbound from the US
           s.status,
           s.originPort,
           s.destinationPort,
@@ -391,6 +387,21 @@ async function main(): Promise<void> {
           s.vesselName,
           s.flightNumber,
           s.mawbNumber,
+          USER.admin, // created_by (NOT NULL)
+        ],
+      );
+
+      // Cargo line (single primary line per demo shipment).
+      await client.query(
+        `INSERT INTO cargo_items (
+           tenant_id, shipment_id, goods_description, hs_code, country_of_origin,
+           gross_weight_kg, volume_cbm, num_packages, package_type, declared_value_usd,
+           is_hazmat, hazmat_un_number, hazmat_proper_shipping_name, hazmat_class,
+           hazmat_packing_group, is_primary
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true)`,
+        [
+          TENANT_ID,
+          s.id,
           s.goodsDescription,
           s.hsCode,
           s.countryOfOrigin,
@@ -404,12 +415,25 @@ async function main(): Promise<void> {
           s.hazmatProperShippingName,
           s.hazmatClass,
           s.hazmatPackingGroup,
-          s.shipperId,
-          s.consigneeId,
-          null, // notify_party_id
-          USER.admin, // created_by (NOT NULL)
         ],
       );
+
+      // Shipper/consignee links (shipment_parties is the sole party store).
+      if (s.shipperId) {
+        await client.query(
+          `INSERT INTO shipment_parties (tenant_id, shipment_id, party_id, role, is_primary)
+           VALUES ($1, $2, $3, 'SHIPPER', true)`,
+          [TENANT_ID, s.id, s.shipperId],
+        );
+      }
+      if (s.consigneeId) {
+        await client.query(
+          `INSERT INTO shipment_parties (tenant_id, shipment_id, party_id, role, is_primary)
+           VALUES ($1, $2, $3, 'CONSIGNEE', true)`,
+          [TENANT_ID, s.id, s.consigneeId],
+        );
+      }
+
       console.log(`   • ${s.number} (${s.mode}/${s.status})`);
     }
 
@@ -491,9 +515,9 @@ async function main(): Promise<void> {
     for (const e of trackingEvents) {
       await client.query(
         `INSERT INTO tracking_events
-           (shipment_id, event_code, event_description, location_name, lat, lng, event_time)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [SHIP.s1, e.code, e.description, e.location, e.lat, e.lng, e.time],
+           (tenant_id, shipment_id, event_code, event_description, location_name, lat, lng, event_time)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [TENANT_ID, SHIP.s1, e.code, e.description, e.location, e.lat, e.lng, e.time],
       );
       console.log(`   • ${e.code}`);
     }

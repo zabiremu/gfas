@@ -88,6 +88,7 @@ export class WarehouseService {
     const entry = this.warehouseRepository.create({
       tenant_id: tenantId,
       shipment_id: dto.shipmentId ?? null,
+      warehouse_id: dto.warehouseId,
       customer_name: dto.customerName,
       batch_number: dto.batchNumber,
       lot_number: dto.lotNumber ?? null,

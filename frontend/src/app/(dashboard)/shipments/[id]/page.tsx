@@ -7,9 +7,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import api from '@/lib/api';
 import type {
-  Party,
   Shipment,
   ShipmentDocument,
+  ShipmentParty,
   ShipmentStatus,
   TrackingEvent,
 } from '@/types';
@@ -35,11 +35,18 @@ const TABS = [
 ] as const;
 type Tab = (typeof TABS)[number];
 
+// Mirrors backend/src/documents/doc-type.constants.ts (DOC_TYPES) — keep in
+// sync; no shared package exists between frontend and backend to do this
+// automatically.
 const DOC_TYPES = [
   'HOUSE_BILL_OF_LADING',
+  'MASTER_BILL_OF_LADING',
+  'AIR_WAYBILL',
   'COMMERCIAL_INVOICE',
+  'PROFORMA_INVOICE',
   'PACKING_LIST',
   'CERTIFICATE_OF_ORIGIN',
+  'IMO_DGD',
 ];
 
 type Notify = (message: string, type?: ToastType) => void;
@@ -111,7 +118,7 @@ export default function ShipmentDetailPage() {
           </h2>
           <ModeBadge mode={shipment.mode} />
           <StatusBadge status={shipment.status} />
-          {shipment.isHazmat && (
+          {shipment.cargoItems?.some((c) => c.isHazmat) && (
             <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">
               ☢️ HAZ
             </span>
@@ -241,11 +248,11 @@ function InfoRow({ label, value }: { label: string; value?: string | number }) {
 
 function PartyBlock({
   label,
-  party,
+  parties,
   fallback,
 }: {
   label: string;
-  party?: Party;
+  parties: ShipmentParty[];
   fallback: 'warning' | 'consignee';
 }) {
   return (
@@ -253,17 +260,34 @@ function PartyBlock({
       <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
         {label}
       </div>
-      {party ? (
-        <div className="text-sm text-gray-800">
-          <div className="font-semibold">{party.name}</div>
-          {party.address && <div className="text-gray-600">{party.address}</div>}
-          {(party.city || party.country) && (
-            <div className="text-gray-600">
-              {[party.city, party.country].filter(Boolean).join(', ')}
+      {parties.length > 0 ? (
+        <div className="space-y-3">
+          {parties.map((sp) => (
+            <div key={sp.id} className="text-sm text-gray-800">
+              <div className="font-semibold">
+                {sp.party.name}
+                {parties.length > 1 && sp.isPrimary && (
+                  <span className="ml-1.5 rounded-full bg-[#1559C9]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#1559C9]">
+                    Primary
+                  </span>
+                )}
+              </div>
+              {sp.party.address && (
+                <div className="text-gray-600">{sp.party.address}</div>
+              )}
+              {(sp.party.city || sp.party.country) && (
+                <div className="text-gray-600">
+                  {[sp.party.city, sp.party.country].filter(Boolean).join(', ')}
+                </div>
+              )}
+              {sp.party.phone && (
+                <div className="text-gray-600">{sp.party.phone}</div>
+              )}
+              {sp.party.email && (
+                <div className="text-gray-600">{sp.party.email}</div>
+              )}
             </div>
-          )}
-          {party.phone && <div className="text-gray-600">{party.phone}</div>}
-          {party.email && <div className="text-gray-600">{party.email}</div>}
+          ))}
         </div>
       ) : fallback === 'warning' ? (
         <div className="text-sm font-medium text-red-600">⚠️ Not assigned</div>
@@ -275,6 +299,19 @@ function PartyBlock({
 }
 
 function OverviewTab({ shipment }: { shipment: Shipment }) {
+  const { data: parties = [] } = useQuery<ShipmentParty[]>({
+    queryKey: ['shipmentParties', shipment.id],
+    queryFn: async () =>
+      (await api.get<ShipmentParty[]>(`/shipments/${shipment.id}/parties`))
+        .data,
+  });
+  const byRole = (role: string) => parties.filter((p) => p.role === role);
+
+  const cargoItems = shipment.cargoItems ?? [];
+  const primaryCargo =
+    cargoItems.find((c) => c.isPrimary) ?? cargoItems[0] ?? null;
+  const hazmatItems = cargoItems.filter((c) => c.isHazmat);
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {/* Shipment info */}
@@ -283,6 +320,15 @@ function OverviewTab({ shipment }: { shipment: Shipment }) {
           Shipment Information
         </h3>
         <InfoRow label="Mode" value={shipment.mode} />
+        <InfoRow
+          label="Direction"
+          value={
+            shipment.direction
+              ? shipment.direction.charAt(0) +
+                shipment.direction.slice(1).toLowerCase()
+              : 'Unknown'
+          }
+        />
         <InfoRow label="Origin Port" value={shipment.originPort} />
         <InfoRow label="Destination Port" value={shipment.destinationPort} />
         <InfoRow label="ETD" value={formatDate(shipment.etd)} />
@@ -291,29 +337,45 @@ function OverviewTab({ shipment }: { shipment: Shipment }) {
           label="Vessel / Flight"
           value={shipment.vesselName || shipment.flightNumber || '—'}
         />
-        <InfoRow label="Goods Description" value={shipment.goodsDescription} />
-        <InfoRow label="HS Code" value={shipment.hsCode} />
-        <InfoRow label="Country of Origin" value={shipment.countryOfOrigin} />
+        <InfoRow
+          label="Goods Description"
+          value={primaryCargo?.goodsDescription}
+        />
+        <InfoRow label="HS Code" value={primaryCargo?.hsCode ?? undefined} />
+        <InfoRow
+          label="Country of Origin"
+          value={primaryCargo?.countryOfOrigin ?? undefined}
+        />
         <InfoRow
           label="Gross Weight"
-          value={`${shipment.grossWeightKg} kg`}
+          value={primaryCargo ? `${primaryCargo.grossWeightKg} kg` : '—'}
         />
         <InfoRow
           label="Volume"
-          value={shipment.volumeCbm ? `${shipment.volumeCbm} CBM` : '—'}
+          value={primaryCargo?.volumeCbm ? `${primaryCargo.volumeCbm} CBM` : '—'}
         />
         <InfoRow
           label="Packages"
-          value={`${shipment.numPackages} ${shipment.packageType}`}
+          value={
+            primaryCargo
+              ? `${primaryCargo.numPackages} ${primaryCargo.packageType}`
+              : '—'
+          }
         />
         <InfoRow
           label="Declared Value"
           value={
-            shipment.declaredValueUsd
-              ? `USD ${shipment.declaredValueUsd}`
+            primaryCargo?.declaredValueUsd
+              ? `USD ${primaryCargo.declaredValueUsd}`
               : '—'
           }
         />
+        {cargoItems.length > 1 && (
+          <p className="mt-2 text-xs italic text-gray-400">
+            +{cargoItems.length - 1} more cargo line
+            {cargoItems.length - 1 > 1 ? 's' : ''} — see cargo items.
+          </p>
+        )}
       </div>
 
       {/* Right column */}
@@ -322,33 +384,46 @@ function OverviewTab({ shipment }: { shipment: Shipment }) {
           <h3 className="mb-3 text-sm font-semibold text-[#07172E]">Parties</h3>
           <PartyBlock
             label="Shipper"
-            party={shipment.shipper}
+            parties={byRole('SHIPPER')}
             fallback="warning"
           />
           <PartyBlock
             label="Consignee"
-            party={shipment.consignee}
+            parties={byRole('CONSIGNEE')}
             fallback="warning"
           />
           <PartyBlock
             label="Notify Party"
-            party={shipment.notifyParty}
+            parties={byRole('NOTIFY_PARTY')}
             fallback="consignee"
           />
         </div>
 
-        {shipment.isHazmat && (
+        {hazmatItems.length > 0 && (
           <div className="rounded-xl border-2 border-red-300 bg-red-50/40 p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-bold text-red-700">
               ☢️ Hazardous Cargo
             </h3>
-            <InfoRow label="UN Number" value={shipment.hazmatUnNumber} />
-            <InfoRow
-              label="Proper Shipping Name"
-              value={shipment.hazmatProperShippingName}
-            />
-            <InfoRow label="Class" value={shipment.hazmatClass} />
-            <InfoRow label="Packing Group" value={shipment.hazmatPackingGroup} />
+            {hazmatItems.map((item) => (
+              <div key={item.id} className="border-b border-red-100 pb-3 last:border-0">
+                <div className="mb-1 text-xs font-semibold text-gray-700">
+                  {item.goodsDescription}
+                </div>
+                <InfoRow
+                  label="UN Number"
+                  value={item.hazmatUnNumber ?? undefined}
+                />
+                <InfoRow
+                  label="Proper Shipping Name"
+                  value={item.hazmatProperShippingName ?? undefined}
+                />
+                <InfoRow label="Class" value={item.hazmatClass ?? undefined} />
+                <InfoRow
+                  label="Packing Group"
+                  value={item.hazmatPackingGroup ?? undefined}
+                />
+              </div>
+            ))}
           </div>
         )}
       </div>

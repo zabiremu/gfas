@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  NotFoundException,
   Param,
   Patch,
   Post,
@@ -13,8 +12,6 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
-import { createReadStream, existsSync } from 'fs';
-import { basename, join } from 'path';
 import {
   CurrentUser,
   type AuthUser,
@@ -75,20 +72,15 @@ export class DocumentsController {
     @Param('id') id: string,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
-    const document = await this.documentsService.findOne(user.tenantId, id);
-    if (!document.file_url) {
-      throw new NotFoundException('Document has not been generated yet');
-    }
-
-    const absolutePath = join(process.cwd(), document.file_url);
-    if (!existsSync(absolutePath)) {
-      throw new NotFoundException('Generated file is missing on disk');
-    }
+    const { buffer, filename } = await this.documentsService.downloadFile(
+      user.tenantId,
+      id,
+    );
 
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${basename(document.file_url)}"`,
+      'Content-Disposition': `attachment; filename="${filename}"`,
     });
-    return new StreamableFile(createReadStream(absolutePath));
+    return new StreamableFile(buffer);
   }
 }

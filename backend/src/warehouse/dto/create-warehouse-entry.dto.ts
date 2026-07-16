@@ -10,6 +10,9 @@ import {
 } from 'class-validator';
 
 export class CreateWarehouseEntryDto {
+  @IsUUID()
+  warehouseId: string;
+
   @IsString()
   @IsNotEmpty()
   customerName: string;

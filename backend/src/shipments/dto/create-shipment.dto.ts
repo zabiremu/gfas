@@ -1,19 +1,26 @@
+import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
+  IsArray,
   IsBoolean,
   IsDateString,
   IsEnum,
-  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
+  ValidateNested,
 } from 'class-validator';
-import { ShipmentMode } from '../../entities/shipment.entity';
+import { ShipmentDirection, ShipmentMode } from '../../entities/shipment.entity';
+import { CargoItemInputDto } from './cargo-item-input.dto';
 
 export class CreateShipmentDto {
   @IsEnum(ShipmentMode)
   mode: ShipmentMode;
+
+  @IsEnum(ShipmentDirection)
+  direction: ShipmentDirection;
 
   @IsString()
   @IsNotEmpty()
@@ -43,9 +50,21 @@ export class CreateShipmentDto {
   @IsString()
   mawbNumber?: string;
 
+  // Preferred: one or more cargo lines. Takes precedence over the flat
+  // fields below when provided.
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => CargoItemInputDto)
+  cargoItems?: CargoItemInputDto[];
+
+  // Deprecated fallback: a single cargo line specified flat on the shipment
+  // payload, for clients not yet updated to send `cargoItems`. Ignored if
+  // `cargoItems` is provided.
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  goodsDescription: string;
+  goodsDescription?: string;
 
   @IsOptional()
   @IsString()
@@ -55,19 +74,21 @@ export class CreateShipmentDto {
   @IsString()
   countryOfOrigin?: string;
 
+  @IsOptional()
   @IsNumber()
-  grossWeightKg: number;
+  grossWeightKg?: number;
 
   @IsOptional()
   @IsNumber()
   volumeCbm?: number;
 
-  @IsInt()
-  numPackages: number;
+  @IsOptional()
+  @IsNumber()
+  numPackages?: number;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  packageType: string;
+  packageType?: string;
 
   @IsOptional()
   @IsNumber()

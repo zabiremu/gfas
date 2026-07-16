@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import type { Shipment, ShipmentMode, ShipmentStatus } from '@/types';
+import type { Shipment, ShipmentDirection, ShipmentMode, ShipmentStatus } from '@/types';
 import { formatDate, isOverdue } from '@/lib/utils';
 import StatusBadge from '@/components/ui/StatusBadge';
 import ModeBadge from '@/components/ui/ModeBadge';
@@ -16,6 +16,13 @@ const MODE_OPTIONS: { value: '' | ShipmentMode; label: string }[] = [
   { value: 'OCEAN', label: '🚢 Ocean' },
   { value: 'AIR', label: '✈️ Air' },
   { value: 'INLAND', label: '🚛 Inland' },
+];
+
+const DIRECTION_OPTIONS: { value: '' | ShipmentDirection; label: string }[] = [
+  { value: '', label: 'All Directions' },
+  { value: 'IMPORT', label: 'Import' },
+  { value: 'EXPORT', label: 'Export' },
+  { value: 'DOMESTIC', label: 'Domestic' },
 ];
 
 const STATUS_OPTIONS: { value: '' | ShipmentStatus; label: string }[] = [
@@ -36,6 +43,7 @@ export default function ShipmentsPage() {
   const [search, setSearch] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
   const [mode, setMode] = useState<'' | ShipmentMode>('');
+  const [direction, setDirection] = useState<'' | ShipmentDirection>('');
   const [status, setStatus] = useState<'' | ShipmentStatus>('');
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -46,12 +54,13 @@ export default function ShipmentsPage() {
   }, [search]);
 
   const { data: shipments, isLoading, isError } = useQuery<Shipment[]>({
-    queryKey: ['shipments', { status, mode, q: debouncedQ }],
+    queryKey: ['shipments', { status, mode, direction, q: debouncedQ }],
     queryFn: async () => {
       const res = await api.get<Shipment[]>('/shipments', {
         params: {
           status: status || undefined,
           mode: mode || undefined,
+          direction: direction || undefined,
           q: debouncedQ || undefined,
         },
       });
@@ -88,6 +97,17 @@ export default function ShipmentsPage() {
           onChange={(e) => setMode(e.target.value as '' | ShipmentMode)}
         >
           {MODE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <select
+          className={selectClass}
+          value={direction}
+          onChange={(e) => setDirection(e.target.value as '' | ShipmentDirection)}
+        >
+          {DIRECTION_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>
@@ -134,6 +154,7 @@ export default function ShipmentsPage() {
                 <tr className="border-b border-gray-200 text-[11px] uppercase tracking-wide text-gray-500">
                   <th className="px-5 py-3 font-semibold">Shipment #</th>
                   <th className="px-5 py-3 font-semibold">Mode</th>
+                  <th className="px-5 py-3 font-semibold">Direction</th>
                   <th className="px-5 py-3 font-semibold">Route</th>
                   <th className="px-5 py-3 font-semibold">Parties</th>
                   <th className="px-5 py-3 font-semibold">ETD / ETA</th>
@@ -160,6 +181,11 @@ export default function ShipmentsPage() {
                       </td>
                       <td className="px-5 py-3">
                         <ModeBadge mode={s.mode} />
+                      </td>
+                      <td className="px-5 py-3 text-gray-700">
+                        {s.direction
+                          ? s.direction.charAt(0) + s.direction.slice(1).toLowerCase()
+                          : <span className="text-gray-400">Unknown</span>}
                       </td>
                       <td className="px-5 py-3 whitespace-nowrap text-gray-700">
                         {s.originPort} → {s.destinationPort}
@@ -190,7 +216,7 @@ export default function ShipmentsPage() {
                         <StatusBadge status={s.status} />
                       </td>
                       <td className="px-5 py-3">
-                        {s.isHazmat ? (
+                        {s.cargoItems?.some((c) => c.isHazmat) ? (
                           <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">
                             ☢️ HAZ
                           </span>

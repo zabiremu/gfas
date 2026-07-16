@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import api from '@/lib/api';
+import type { WarehouseFacility } from '@/types';
 
 interface CreateWarehouseEntryModalProps {
   open: boolean;
@@ -12,6 +13,7 @@ interface CreateWarehouseEntryModalProps {
 }
 
 interface FormState {
+  warehouseId: string;
   customerName: string;
   batchNumber: string;
   lotNumber: string;
@@ -33,6 +35,7 @@ interface FormState {
 const today = () => new Date().toISOString().slice(0, 10);
 
 const INITIAL: FormState = {
+  warehouseId: '',
   customerName: '',
   batchNumber: '',
   lotNumber: '',
@@ -68,6 +71,21 @@ export default function CreateWarehouseEntryModal({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const { data: warehouses = [] } = useQuery<WarehouseFacility[]>({
+    queryKey: ['warehouses'],
+    queryFn: async () =>
+      (await api.get<WarehouseFacility[]>('/warehouses')).data,
+    enabled: open,
+  });
+
+  // Default to the first (usually only) facility once loaded.
+  useEffect(() => {
+    if (open && !form.warehouseId && warehouses.length > 0) {
+      set('warehouseId', warehouses[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, warehouses]);
+
   const reset = () => {
     setForm(INITIAL);
     setErrors({});
@@ -87,6 +105,7 @@ export default function CreateWarehouseEntryModal({
 
   const validate = (): boolean => {
     const e: Record<string, string> = {};
+    if (!form.warehouseId) e.warehouseId = 'Select a warehouse facility';
     if (!form.customerName.trim()) e.customerName = 'Customer name is required';
     if (!form.batchNumber.trim()) e.batchNumber = 'Batch number is required';
     if (!form.numPallets.trim() || Number(form.numPallets) <= 0)
@@ -102,6 +121,7 @@ export default function CreateWarehouseEntryModal({
 
   const buildPayload = () => {
     const p: Record<string, unknown> = {
+      warehouseId: form.warehouseId,
       customerName: form.customerName.trim(),
       batchNumber: form.batchNumber.trim(),
       numPallets: Number(form.numPallets),
@@ -181,6 +201,26 @@ export default function CreateWarehouseEntryModal({
           <div className="mb-6">
             <div className={sectionTitle}>Cargo</div>
             <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className={labelClass}>Warehouse Facility *</label>
+                <select
+                  className={inputClass}
+                  value={form.warehouseId}
+                  onChange={(e) => set('warehouseId', e.target.value)}
+                >
+                  <option value="">Select a facility…</option>
+                  {warehouses.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name} ({w.code})
+                    </option>
+                  ))}
+                </select>
+                {errors.warehouseId && (
+                  <p className="mt-1 text-xs text-red-600">
+                    {errors.warehouseId}
+                  </p>
+                )}
+              </div>
               <div className="col-span-2">
                 <label className={labelClass}>Customer Name *</label>
                 <input

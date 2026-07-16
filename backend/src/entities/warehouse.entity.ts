@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { Tenant } from './tenant.entity';
 import { Shipment } from './shipment.entity';
+import { Warehouse } from './warehouse-facility.entity';
 
 export enum WarehouseStatus {
   IN_STORAGE = 'IN_STORAGE',
@@ -33,6 +34,13 @@ export class WarehouseEntry {
   @ManyToOne(() => Shipment, { nullable: true })
   @JoinColumn({ name: 'shipment_id' })
   shipment: Shipment | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  warehouse_id: string | null;
+
+  @ManyToOne(() => Warehouse, { nullable: true })
+  @JoinColumn({ name: 'warehouse_id' })
+  warehouse: Warehouse | null;
 
   @Column({ type: 'varchar' })
   customer_name: string;

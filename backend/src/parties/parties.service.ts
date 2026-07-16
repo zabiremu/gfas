@@ -19,7 +19,7 @@ export class PartiesService {
     const where: FindOptionsWhere<Party> = { tenant_id: tenantId };
 
     if (query?.role) {
-      where.role = query.role;
+      where.default_role = query.role;
     }
     if (query?.q) {
       where.name = ILike(`%${query.q}%`);
@@ -45,7 +45,7 @@ export class PartiesService {
     const party = this.partyRepository.create({
       tenant_id: tenantId,
       name: dto.name,
-      role: dto.role,
+      default_role: dto.role ?? null,
       address: dto.address ?? null,
       city: dto.city ?? null,
       state: dto.state ?? null,
@@ -66,7 +66,7 @@ export class PartiesService {
     const party = await this.findOne(tenantId, id);
 
     if (dto.name !== undefined) party.name = dto.name;
-    if (dto.role !== undefined) party.role = dto.role;
+    if (dto.role !== undefined) party.default_role = dto.role;
     if (dto.address !== undefined) party.address = dto.address;
     if (dto.city !== undefined) party.city = dto.city;
     if (dto.state !== undefined) party.state = dto.state;

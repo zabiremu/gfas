@@ -1,4 +1,5 @@
 export type ShipmentMode = 'OCEAN' | 'AIR' | 'INLAND';
+export type ShipmentDirection = 'IMPORT' | 'EXPORT' | 'DOMESTIC';
 export type ShipmentStatus = 'DRAFT' | 'BOOKED' | 'IN_TRANSIT' | 'CUSTOMS_HOLD' | 'ARRIVED' | 'DELIVERED' | 'CANCELLED';
 export type DocumentStatus = 'DRAFT' | 'ISSUED' | 'SENT' | 'SIGNED' | 'VOID';
 export type PartyRole = 'SHIPPER' | 'CONSIGNEE' | 'NOTIFY_PARTY' | 'FREIGHT_FORWARDER' | 'CUSTOMS_BROKER';
@@ -15,10 +16,30 @@ export interface Party {
   email?: string;
 }
 
+export interface CargoItem {
+  id: string;
+  shipmentId: string;
+  goodsDescription: string;
+  hsCode?: string | null;
+  countryOfOrigin?: string | null;
+  grossWeightKg: number;
+  volumeCbm?: number | null;
+  numPackages: number;
+  packageType: string;
+  declaredValueUsd?: number | null;
+  isHazmat: boolean;
+  hazmatUnNumber?: string | null;
+  hazmatProperShippingName?: string | null;
+  hazmatClass?: string | null;
+  hazmatPackingGroup?: string | null;
+  isPrimary: boolean;
+}
+
 export interface Shipment {
   id: string;
   shipmentNumber: string;
   mode: ShipmentMode;
+  direction?: ShipmentDirection | null;
   status: ShipmentStatus;
   originPort: string;
   destinationPort: string;
@@ -27,19 +48,7 @@ export interface Shipment {
   vesselName?: string;
   flightNumber?: string;
   mawbNumber?: string;
-  goodsDescription: string;
-  hsCode?: string;
-  countryOfOrigin?: string;
-  grossWeightKg: number;
-  volumeCbm?: number;
-  numPackages: number;
-  packageType: string;
-  declaredValueUsd?: number;
-  isHazmat: boolean;
-  hazmatUnNumber?: string;
-  hazmatProperShippingName?: string;
-  hazmatClass?: string;
-  hazmatPackingGroup?: string;
+  cargoItems?: CargoItem[];
   shipper?: Party;
   consignee?: Party;
   notifyParty?: Party;
@@ -59,6 +68,15 @@ export interface ShipmentDocument {
   shipment?: Shipment;
 }
 
+export interface ShipmentParty {
+  id: string;
+  shipmentId: string;
+  partyId: string;
+  party: Party;
+  role: PartyRole;
+  isPrimary: boolean;
+}
+
 export interface TrackingEvent {
   id: string;
   eventCode: string;
@@ -68,6 +86,19 @@ export interface TrackingEvent {
   lng?: number;
   eventTime: string;
   notes?: string;
+}
+
+export interface WarehouseFacility {
+  id: string;
+  name: string;
+  code: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  capacityPallets?: number | null;
+  isActive: boolean;
 }
 
 export type WarehouseStatus = 'IN_STORAGE' | 'RELEASED';

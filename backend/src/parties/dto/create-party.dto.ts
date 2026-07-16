@@ -12,8 +12,11 @@ export class CreatePartyDto {
   @IsNotEmpty()
   name: string;
 
+  // Optional: a party's real role is per-shipment (see shipment_parties).
+  // This is just a hint used to pre-fill/pre-filter new-party pickers.
+  @IsOptional()
   @IsEnum(PartyRole)
-  role: PartyRole;
+  role?: PartyRole;
 
   @IsOptional()
   @IsString()

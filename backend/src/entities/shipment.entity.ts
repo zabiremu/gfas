@@ -13,6 +13,8 @@ import { Party } from './party.entity';
 import { User } from './user.entity';
 import { ShipmentDocument } from './document.entity';
 import { TrackingEvent } from './tracking-event.entity';
+import { ShipmentParty } from './shipment-party.entity';
+import { CargoItem } from './cargo-item.entity';
 
 export enum ShipmentMode {
   OCEAN = 'OCEAN',
@@ -28,6 +30,12 @@ export enum ShipmentStatus {
   ARRIVED = 'ARRIVED',
   DELIVERED = 'DELIVERED',
   CANCELLED = 'CANCELLED',
+}
+
+export enum ShipmentDirection {
+  IMPORT = 'IMPORT',
+  EXPORT = 'EXPORT',
+  DOMESTIC = 'DOMESTIC',
 }
 
 @Entity('shipments')
@@ -51,6 +59,11 @@ export class Shipment {
   @Column({ type: 'enum', enum: ShipmentStatus, default: ShipmentStatus.DRAFT })
   status: ShipmentStatus;
 
+  // Nullable: existing shipments predate this column and have no reliable
+  // way to infer historical direction, so they stay NULL ("Unknown" in UI).
+  @Column({ type: 'enum', enum: ShipmentDirection, nullable: true })
+  direction: ShipmentDirection | null;
+
   @Column({ type: 'varchar' })
   origin_port: string;
 
@@ -72,64 +85,12 @@ export class Shipment {
   @Column({ type: 'varchar', nullable: true })
   mawb_number: string | null;
 
-  @Column({ type: 'text' })
-  goods_description: string;
-
-  @Column({ type: 'varchar', nullable: true })
-  hs_code: string | null;
-
-  @Column({ type: 'varchar', nullable: true })
-  country_of_origin: string | null;
-
-  @Column({ type: 'decimal', precision: 12, scale: 3 })
-  gross_weight_kg: number;
-
-  @Column({ type: 'decimal', precision: 12, scale: 3, nullable: true })
-  volume_cbm: number | null;
-
-  @Column({ type: 'int' })
-  num_packages: number;
-
-  @Column({ type: 'varchar' })
-  package_type: string;
-
-  @Column({ type: 'decimal', precision: 14, scale: 2, nullable: true })
-  declared_value_usd: number | null;
-
-  @Column({ type: 'boolean', default: false })
-  is_hazmat: boolean;
-
-  @Column({ type: 'varchar', nullable: true })
-  hazmat_un_number: string | null;
-
-  @Column({ type: 'varchar', nullable: true })
-  hazmat_proper_shipping_name: string | null;
-
-  @Column({ type: 'varchar', nullable: true })
-  hazmat_class: string | null;
-
-  @Column({ type: 'varchar', nullable: true })
-  hazmat_packing_group: string | null;
-
-  @Column({ type: 'uuid', nullable: true })
-  shipper_id: string | null;
-
-  @ManyToOne(() => Party, { nullable: true })
-  @JoinColumn({ name: 'shipper_id' })
+  // Not TypeORM-mapped columns: populated in-memory from shipment_parties by
+  // ShipmentsService/DocumentsService (see attachPrimaryParties()) for
+  // backward-compatible API responses. The real source of truth for
+  // shipment-party links is the shipment_parties table.
   shipper: Party | null;
-
-  @Column({ type: 'uuid', nullable: true })
-  consignee_id: string | null;
-
-  @ManyToOne(() => Party, { nullable: true })
-  @JoinColumn({ name: 'consignee_id' })
   consignee: Party | null;
-
-  @Column({ type: 'uuid', nullable: true })
-  notify_party_id: string | null;
-
-  @ManyToOne(() => Party, { nullable: true })
-  @JoinColumn({ name: 'notify_party_id' })
   notifyParty: Party | null;
 
   @Column({ type: 'uuid' })
@@ -144,6 +105,12 @@ export class Shipment {
 
   @OneToMany(() => TrackingEvent, (event) => event.shipment)
   trackingEvents: TrackingEvent[];
+
+  @OneToMany(() => ShipmentParty, (sp) => sp.shipment)
+  shipmentParties: ShipmentParty[];
+
+  @OneToMany(() => CargoItem, (item) => item.shipment)
+  cargoItems: CargoItem[];
 
   @CreateDateColumn({ type: 'timestamp' })
   created_at: Date;

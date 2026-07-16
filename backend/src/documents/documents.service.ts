@@ -1,22 +1,32 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { mkdirSync, writeFileSync } from 'fs';
 import { join, sep } from 'path';
 import { FindOptionsWhere, Repository } from 'typeorm';
+import { CargoItem } from '../entities/cargo-item.entity';
 import { ShipmentDocument, DocumentStatus } from '../entities/document.entity';
-import { Party } from '../entities/party.entity';
+import { Party, PartyRole } from '../entities/party.entity';
 import { Shipment } from '../entities/shipment.entity';
+import { ShipmentParty } from '../entities/shipment-party.entity';
+import { DOC_TYPES } from './doc-type.constants';
 import { GenerateDocumentDto } from './dto/generate-document.dto';
 import { PdfGeneratorService } from './pdf-generator.service';
+import { STORAGE_SERVICE, type StorageService } from './storage/storage.interface';
 
 /** Maps a logical document type to its Handlebars template file name. */
 const TEMPLATE_BY_DOC_TYPE: Record<string, string> = {
   HOUSE_BILL_OF_LADING: 'bill-of-lading',
+  MASTER_BILL_OF_LADING: 'master-bill-of-lading',
+  AIR_WAYBILL: 'air-waybill',
   COMMERCIAL_INVOICE: 'commercial-invoice',
+  PROFORMA_INVOICE: 'proforma-invoice',
+  PACKING_LIST: 'packing-list',
+  CERTIFICATE_OF_ORIGIN: 'certificate-of-origin',
+  IMO_DGD: 'imo-dgd',
 };
 
 @Injectable()
@@ -26,7 +36,13 @@ export class DocumentsService {
     private readonly documentRepository: Repository<ShipmentDocument>,
     @InjectRepository(Shipment)
     private readonly shipmentRepository: Repository<Shipment>,
+    @InjectRepository(ShipmentParty)
+    private readonly shipmentPartyRepository: Repository<ShipmentParty>,
+    @InjectRepository(CargoItem)
+    private readonly cargoItemRepository: Repository<CargoItem>,
     private readonly pdfGenerator: PdfGeneratorService,
+    @Inject(STORAGE_SERVICE)
+    private readonly storage: StorageService,
   ) {}
 
   async findAll(
@@ -68,6 +84,21 @@ export class DocumentsService {
     return this.documentRepository.save(document);
   }
 
+  async downloadFile(
+    tenantId: string,
+    id: string,
+  ): Promise<{ buffer: Buffer; filename: string }> {
+    const document = await this.findOne(tenantId, id);
+    if (!document.file_url) {
+      throw new NotFoundException('Document has not been generated yet');
+    }
+    if (!(await this.storage.exists(document.file_url))) {
+      throw new NotFoundException('Generated file is missing in storage');
+    }
+    const buffer = await this.storage.read(document.file_url);
+    return { buffer, filename: document.file_url.split('/').pop()! };
+  }
+
   async generatePdf(
     tenantId: string,
     shipmentId: string,
@@ -79,11 +110,15 @@ export class DocumentsService {
 
     const shipment = await this.shipmentRepository.findOne({
       where: { id: shipmentId, tenant_id: tenantId },
-      relations: { shipper: true, consignee: true, notifyParty: true },
     });
     if (!shipment) {
       throw new NotFoundException(`Shipment ${shipmentId} not found`);
     }
+    await this.attachPrimaryParties(tenantId, shipment);
+    const cargoItems = await this.cargoItemRepository.find({
+      where: { tenant_id: tenantId, shipment_id: shipmentId },
+      order: { is_primary: 'DESC', created_at: 'ASC' },
+    });
 
     // 1. Create the document record in DRAFT.
     const document = await this.documentRepository.save(
@@ -96,29 +131,40 @@ export class DocumentsService {
     );
 
     // 2. Render the PDF.
-    const pdfBuffer = await this.generatePdfFile(shipment, dto.docType);
+    const pdfBuffer = await this.generatePdfFile(shipment, dto.docType, cargoItems);
 
-    // 3. Persist the file to the local filesystem.
+    // 3. Persist the file via the configured storage driver (local disk by
+    // default; STORAGE_DRIVER=minio for the S3-compatible driver).
     const timestamp = Date.now();
     const relativeDir = join('uploads', 'documents', tenantId, shipmentId);
-    const relativePath = join(relativeDir, `${dto.docType}-${timestamp}.pdf`);
-    mkdirSync(join(process.cwd(), relativeDir), { recursive: true });
-    writeFileSync(join(process.cwd(), relativePath), pdfBuffer);
+    const relativePath = join(relativeDir, `${dto.docType}-${timestamp}.pdf`)
+      .split(sep)
+      .join('/');
+    await this.storage.save(relativePath, pdfBuffer);
 
     // 4. Mark as issued.
     document.status = DocumentStatus.ISSUED;
-    document.file_url = relativePath.split(sep).join('/');
+    document.file_url = relativePath;
     document.generated_at = new Date();
     return this.documentRepository.save(document);
   }
 
-  async generatePdfFile(shipment: Shipment, docType: string): Promise<Buffer> {
+  async generatePdfFile(
+    shipment: Shipment,
+    docType: string,
+    cargoItems: CargoItem[],
+  ): Promise<Buffer> {
     const templateName = this.resolveTemplate(docType);
 
-    const declaredValue = Number(shipment.declared_value_usd) || 0;
+    // Single-line templates (bill of lading, invoice, certificates) render
+    // off the primary line; multi-line templates (packing list) use the
+    // full `cargoItems` array also included in `data`.
+    const primary = cargoItems.find((c) => c.is_primary) ?? cargoItems[0];
+
+    const declaredValue = Number(primary?.declared_value_usd) || 0;
     const unitPrice =
-      shipment.num_packages > 0 && declaredValue > 0
-        ? this.formatMoney(declaredValue / shipment.num_packages)
+      primary && primary.num_packages > 0 && declaredValue > 0
+        ? this.formatMoney(declaredValue / primary.num_packages)
         : '0.00';
 
     const data: Record<string, unknown> = {
@@ -135,15 +181,17 @@ export class DocumentsService {
       etd: this.formatDate(shipment.etd),
       eta: this.formatDate(shipment.eta),
       mode: shipment.mode,
+      mawbNumber: shipment.mawb_number ?? '—',
+      flightNumber: shipment.flight_number ?? '—',
 
-      goodsDescription: shipment.goods_description,
-      hsCode: shipment.hs_code ?? '—',
-      countryOfOrigin: shipment.country_of_origin ?? '—',
-      numPackages: shipment.num_packages,
-      packageType: shipment.package_type,
-      grossWeightKg: shipment.gross_weight_kg,
-      volumeCbm: shipment.volume_cbm ?? '—',
-      declaredValueUsd: this.formatMoney(shipment.declared_value_usd),
+      goodsDescription: primary?.goods_description ?? '—',
+      hsCode: primary?.hs_code ?? '—',
+      countryOfOrigin: primary?.country_of_origin ?? '—',
+      numPackages: primary?.num_packages ?? 0,
+      packageType: primary?.package_type ?? '—',
+      grossWeightKg: primary?.gross_weight_kg ?? 0,
+      volumeCbm: primary?.volume_cbm ?? '—',
+      declaredValueUsd: this.formatMoney(primary?.declared_value_usd),
 
       // Commercial-invoice specific figures.
       unitPrice,
@@ -155,23 +203,65 @@ export class DocumentsService {
       // Bill-of-lading specific.
       freightTerms: 'FREIGHT PREPAID',
 
-      isHazmat: shipment.is_hazmat,
-      hazmatUnNumber: shipment.hazmat_un_number ?? '—',
-      hazmatProperShippingName: shipment.hazmat_proper_shipping_name ?? '—',
-      hazmatClass: shipment.hazmat_class ?? '—',
-      hazmatPackingGroup: shipment.hazmat_packing_group ?? '—',
+      isHazmat: primary?.is_hazmat ?? false,
+      hazmatUnNumber: primary?.hazmat_un_number ?? '—',
+      hazmatProperShippingName: primary?.hazmat_proper_shipping_name ?? '—',
+      hazmatClass: primary?.hazmat_class ?? '—',
+      hazmatPackingGroup: primary?.hazmat_packing_group ?? '—',
+
+      // Multi-line cargo, for templates that iterate it (e.g. packing list).
+      cargoItems: cargoItems.map((c) => ({
+        description: c.goods_description,
+        hsCode: c.hs_code ?? '—',
+        numPackages: c.num_packages,
+        packageType: c.package_type,
+        grossWeightKg: c.gross_weight_kg,
+        volumeCbm: c.volume_cbm ?? '—',
+      })),
+      cargoTotals: {
+        numPackages: cargoItems.reduce((sum, c) => sum + c.num_packages, 0),
+        grossWeightKg: cargoItems.reduce(
+          (sum, c) => sum + Number(c.gross_weight_kg),
+          0,
+        ),
+      },
     };
 
     return this.pdfGenerator.generatePdf(templateName, data);
   }
 
+  // Populates the (non-persisted) shipper/consignee/notifyParty relations on
+  // the shipment from shipment_parties instead of the legacy shipper_id/
+  // consignee_id/notify_party_id FK columns, which are no longer read from.
+  private async attachPrimaryParties(
+    tenantId: string,
+    shipment: Shipment,
+  ): Promise<void> {
+    const links = await this.shipmentPartyRepository.find({
+      where: {
+        tenant_id: tenantId,
+        shipment_id: shipment.id,
+        is_primary: true,
+      },
+      relations: { party: true },
+    });
+    shipment.shipper =
+      links.find((l) => l.role === PartyRole.SHIPPER)?.party ?? null;
+    shipment.consignee =
+      links.find((l) => l.role === PartyRole.CONSIGNEE)?.party ?? null;
+    shipment.notifyParty =
+      links.find((l) => l.role === PartyRole.NOTIFY_PARTY)?.party ?? null;
+  }
+
   private resolveTemplate(docType: string): string {
     const templateName = TEMPLATE_BY_DOC_TYPE[docType];
     if (!templateName) {
+      const known = DOC_TYPES.map((t) => t.value).join(', ');
       throw new BadRequestException(
-        `Unsupported docType '${docType}'. Supported: ${Object.keys(
-          TEMPLATE_BY_DOC_TYPE,
-        ).join(', ')}`,
+        `Unsupported docType '${docType}'. Known types: ${known}. Of these, ` +
+          `only the following have templates implemented: ${Object.keys(
+            TEMPLATE_BY_DOC_TYPE,
+          ).join(', ')}.`,
       );
     }
     return templateName;
