@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import api from '@/lib/api';
@@ -75,20 +75,14 @@ export default function PartyFormModal({
 }: PartyFormModalProps) {
   const qc = useQueryClient();
   const isEdit = Boolean(party);
+  // No effect-based resync here: the parent remounts this component (via a
+  // `key` that changes on every open) whenever it's opened for a new party
+  // or a fresh create, so a plain lazy initializer is enough to seed the
+  // form from `party` on each open.
   const [form, setForm] = useState<FormState>(() => toForm(party));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  // Re-sync the form whenever a different party is opened for editing (or
-  // the modal is reopened in create mode after being closed).
-  useEffect(() => {
-    if (open) {
-      setForm(toForm(party));
-      setErrors({});
-      setSubmitError(null);
-    }
-  }, [open, party]);
 
   if (!open) return null;
 

@@ -33,6 +33,9 @@ export default function PartiesPage() {
   const [role, setRole] = useState<'' | PartyRole>('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingParty, setEditingParty] = useState<Party | null>(null);
+  // Bumped on every open so PartyFormModal remounts fresh (see the comment
+  // in that file for why this replaces an effect-based form resync).
+  const [modalSession, setModalSession] = useState(0);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(search), 400);
@@ -53,10 +56,12 @@ export default function PartiesPage() {
 
   const openCreate = () => {
     setEditingParty(null);
+    setModalSession((s) => s + 1);
     setModalOpen(true);
   };
   const openEdit = (p: Party) => {
     setEditingParty(p);
+    setModalSession((s) => s + 1);
     setModalOpen(true);
   };
   const closeModal = () => {
@@ -175,7 +180,12 @@ export default function PartiesPage() {
         )}
       </div>
 
-      <PartyFormModal open={modalOpen} onClose={closeModal} party={editingParty} />
+      <PartyFormModal
+        key={modalSession}
+        open={modalOpen}
+        onClose={closeModal}
+        party={editingParty}
+      />
     </div>
   );
 }

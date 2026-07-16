@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import api from '@/lib/api';
 import PartyPicker from '@/components/parties/PartyPicker';
-import type { Party, ShipmentDirection, ShipmentMode } from '@/types';
+import type { ShipmentDirection, ShipmentMode } from '@/types';
 
 interface CreateShipmentModalProps {
   open: boolean;
