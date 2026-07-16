@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Repository } from 'typeorm';
 import { CargoItem } from '../entities/cargo-item.entity';
+import { DocumentTemplate } from '../entities/document-template.entity';
 import { DocumentStatus, ShipmentDocument } from '../entities/document.entity';
 import { Shipment } from '../entities/shipment.entity';
 import { ShipmentParty } from '../entities/shipment-party.entity';
@@ -28,13 +29,22 @@ describe('DocumentsService', () => {
   let shipmentRepo: MockRepo<Shipment>;
   let shipmentPartyRepo: MockRepo<ShipmentParty>;
   let cargoItemRepo: MockRepo<CargoItem>;
-  let pdfGenerator: { generatePdf: jest.Mock };
+  let templateRepo: MockRepo<DocumentTemplate>;
+  let pdfGenerator: {
+    generatePdf: jest.Mock;
+    invalidate: jest.Mock;
+    readFileTemplateSource: jest.Mock;
+  };
   let storage: { save: jest.Mock; read: jest.Mock; exists: jest.Mock };
 
   const tenantId = 'tenant-1';
 
   beforeEach(async () => {
-    pdfGenerator = { generatePdf: jest.fn().mockResolvedValue(Buffer.from('pdf')) };
+    pdfGenerator = {
+      generatePdf: jest.fn().mockResolvedValue(Buffer.from('pdf')),
+      invalidate: jest.fn(),
+      readFileTemplateSource: jest.fn().mockReturnValue('<html>file</html>'),
+    };
     storage = {
       save: jest.fn().mockResolvedValue(undefined),
       read: jest.fn().mockResolvedValue(Buffer.from('pdf')),
@@ -54,6 +64,10 @@ describe('DocumentsService', () => {
           useValue: createMockRepo(),
         },
         { provide: getRepositoryToken(CargoItem), useValue: createMockRepo() },
+        {
+          provide: getRepositoryToken(DocumentTemplate),
+          useValue: createMockRepo(),
+        },
         { provide: PdfGeneratorService, useValue: pdfGenerator },
         { provide: STORAGE_SERVICE, useValue: storage },
       ],
@@ -64,9 +78,13 @@ describe('DocumentsService', () => {
     shipmentRepo = module.get(getRepositoryToken(Shipment));
     shipmentPartyRepo = module.get(getRepositoryToken(ShipmentParty));
     cargoItemRepo = module.get(getRepositoryToken(CargoItem));
+    templateRepo = module.get(getRepositoryToken(DocumentTemplate));
 
     shipmentPartyRepo.find!.mockResolvedValue([]);
     cargoItemRepo.find!.mockResolvedValue([]);
+    // No DB-backed template by default — falls through to the file template
+    // unless a test overrides this to exercise tenant/system-default rows.
+    templateRepo.findOne!.mockResolvedValue(null);
   });
 
   describe('resolveTemplate (via generatePdf)', () => {
@@ -96,6 +114,113 @@ describe('DocumentsService', () => {
         service.generatePdf(tenantId, 's1', { docType: 'NOT_A_TYPE' } as any),
       ).rejects.toThrow(BadRequestException);
       expect(documentRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('template resolution priority (tenant override > system default > file fallback)', () => {
+    beforeEach(() => {
+      shipmentRepo.findOne!.mockResolvedValue({
+        id: 's1',
+        shipment_number: 'SHP-1',
+      } as Shipment);
+      documentRepo.save!.mockImplementation(async (d) => ({ id: 'd1', ...d }));
+    });
+
+    // generatePdf() calls resolveTemplate twice (an upfront validation call,
+    // then the real one inside generatePdfFile), so the mock is keyed off the
+    // `where` clause's tenant_id rather than call order/count.
+    const tenantRow = {
+      id: 'tpl-tenant',
+      tenant_id: tenantId,
+      document_type: 'HOUSE_BILL_OF_LADING',
+      handlebars_body: '<html>tenant override</html>',
+      version: 3,
+      is_active: true,
+    } as DocumentTemplate;
+    const systemRow = {
+      id: 'tpl-system',
+      tenant_id: null,
+      document_type: 'HOUSE_BILL_OF_LADING',
+      handlebars_body: '<html>system default</html>',
+      version: 1,
+      is_active: true,
+    } as DocumentTemplate;
+
+    it('uses a tenant-specific active template when one exists', async () => {
+      templateRepo.findOne!.mockImplementation(async ({ where }: any) =>
+        where.tenant_id === tenantId ? tenantRow : null,
+      );
+
+      await service.generatePdf(tenantId, 's1', {
+        docType: 'HOUSE_BILL_OF_LADING',
+      } as any);
+
+      expect(pdfGenerator.generatePdf).toHaveBeenCalledWith(
+        'db:tpl-tenant:3',
+        expect.any(Function),
+        expect.any(Object),
+      );
+    });
+
+    it('falls back to the system-default template when no tenant override exists', async () => {
+      templateRepo.findOne!.mockImplementation(async ({ where }: any) =>
+        where.tenant_id === tenantId ? null : systemRow,
+      );
+
+      await service.generatePdf(tenantId, 's1', {
+        docType: 'HOUSE_BILL_OF_LADING',
+      } as any);
+
+      expect(pdfGenerator.generatePdf).toHaveBeenCalledWith(
+        'db:tpl-system:1',
+        expect.any(Function),
+        expect.any(Object),
+      );
+    });
+
+    it('falls back to the on-disk .hbs file when no DB row exists at all', async () => {
+      templateRepo.findOne!.mockResolvedValue(null);
+
+      await service.generatePdf(tenantId, 's1', {
+        docType: 'HOUSE_BILL_OF_LADING',
+      } as any);
+
+      expect(pdfGenerator.generatePdf).toHaveBeenCalledWith(
+        'file:bill-of-lading',
+        expect.any(Function),
+        expect.any(Object),
+      );
+    });
+  });
+
+  describe('updateTemplateBody', () => {
+    it('bumps the version and invalidates the old cache entry', async () => {
+      const existing = {
+        id: 'tpl-1',
+        tenant_id: null,
+        document_type: 'HOUSE_BILL_OF_LADING',
+        handlebars_body: '<html>old</html>',
+        version: 2,
+        is_active: true,
+      } as DocumentTemplate;
+      templateRepo.findOne!.mockResolvedValue(existing);
+      templateRepo.save!.mockImplementation(async (t) => t);
+
+      const result = await service.updateTemplateBody(
+        'tpl-1',
+        '<html>new</html>',
+      );
+
+      expect(pdfGenerator.invalidate).toHaveBeenCalledWith('db:tpl-1:2');
+      expect(result.version).toBe(3);
+      expect(result.handlebars_body).toBe('<html>new</html>');
+    });
+
+    it('throws NotFoundException when the template does not exist', async () => {
+      templateRepo.findOne!.mockResolvedValue(null);
+      await expect(
+        service.updateTemplateBody('missing', '<html/>'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -132,9 +257,11 @@ describe('DocumentsService', () => {
         1,
         expect.objectContaining({ status: DocumentStatus.DRAFT }),
       );
-      // PDF rendered
+      // PDF rendered, falling back to the file-based template since no
+      // DB-backed DocumentTemplate row exists for this tenant/doc type.
       expect(pdfGenerator.generatePdf).toHaveBeenCalledWith(
-        'bill-of-lading',
+        'file:bill-of-lading',
+        expect.any(Function),
         expect.any(Object),
       );
       // File persisted via storage abstraction

@@ -1,0 +1,28 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]: ⚓Amovix
+      - paragraph [ref=e6]: Global Freight Automation System
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Email
+        - textbox "Email" [ref=e10]:
+          - /placeholder: you@company.com
+          - text: admin@gtp.com
+      - generic [ref=e11]:
+        - generic [ref=e12]: Password
+        - generic [ref=e13]:
+          - textbox "Password" [ref=e14]:
+            - /placeholder: ••••••••
+            - text: Admin@123
+          - button "Show password" [ref=e15]: 👁️
+      - button "Sign In" [ref=e16]
+    - generic [ref=e17]: "Demo Credentials: admin@gtp.com / Admin@123"
+  - button "Open Next.js Dev Tools" [ref=e28] [cursor=pointer]:
+    - generic [ref=e31]:
+      - text: Compiling
+      - generic [ref=e32]:
+        - generic [ref=e33]: .
+        - generic [ref=e34]: .
+        - generic [ref=e35]: .
+  - alert [ref=e27]

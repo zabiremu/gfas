@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CargoItem } from '../entities/cargo-item.entity';
+import { DocumentTemplate } from '../entities/document-template.entity';
 import { ShipmentDocument } from '../entities/document.entity';
 import { Shipment } from '../entities/shipment.entity';
 import { ShipmentParty } from '../entities/shipment-party.entity';
@@ -16,6 +17,7 @@ import { StorageModule } from './storage/storage.module';
       Shipment,
       ShipmentParty,
       CargoItem,
+      DocumentTemplate,
     ]),
     StorageModule,
   ],

@@ -6,8 +6,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { join, sep } from 'path';
-import { FindOptionsWhere, Repository } from 'typeorm';
+import { FindOptionsWhere, IsNull, Repository } from 'typeorm';
 import { CargoItem } from '../entities/cargo-item.entity';
+import { DocumentTemplate } from '../entities/document-template.entity';
 import { ShipmentDocument, DocumentStatus } from '../entities/document.entity';
 import { Party, PartyRole } from '../entities/party.entity';
 import { Shipment } from '../entities/shipment.entity';
@@ -40,6 +41,8 @@ export class DocumentsService {
     private readonly shipmentPartyRepository: Repository<ShipmentParty>,
     @InjectRepository(CargoItem)
     private readonly cargoItemRepository: Repository<CargoItem>,
+    @InjectRepository(DocumentTemplate)
+    private readonly templateRepository: Repository<DocumentTemplate>,
     private readonly pdfGenerator: PdfGeneratorService,
     @Inject(STORAGE_SERVICE)
     private readonly storage: StorageService,
@@ -106,7 +109,7 @@ export class DocumentsService {
   ): Promise<ShipmentDocument> {
     // Validate the doc type up front so we never persist an orphan DRAFT record
     // for an unsupported template.
-    this.resolveTemplate(dto.docType);
+    await this.resolveTemplate(tenantId, dto.docType);
 
     const shipment = await this.shipmentRepository.findOne({
       where: { id: shipmentId, tenant_id: tenantId },
@@ -131,7 +134,12 @@ export class DocumentsService {
     );
 
     // 2. Render the PDF.
-    const pdfBuffer = await this.generatePdfFile(shipment, dto.docType, cargoItems);
+    const pdfBuffer = await this.generatePdfFile(
+      tenantId,
+      shipment,
+      dto.docType,
+      cargoItems,
+    );
 
     // 3. Persist the file via the configured storage driver (local disk by
     // default; STORAGE_DRIVER=minio for the S3-compatible driver).
@@ -150,11 +158,15 @@ export class DocumentsService {
   }
 
   async generatePdfFile(
+    tenantId: string,
     shipment: Shipment,
     docType: string,
     cargoItems: CargoItem[],
   ): Promise<Buffer> {
-    const templateName = this.resolveTemplate(docType);
+    const { cacheKey, loadSource } = await this.resolveTemplate(
+      tenantId,
+      docType,
+    );
 
     // Single-line templates (bill of lading, invoice, certificates) render
     // off the primary line; multi-line templates (packing list) use the
@@ -227,7 +239,7 @@ export class DocumentsService {
       },
     };
 
-    return this.pdfGenerator.generatePdf(templateName, data);
+    return this.pdfGenerator.generatePdf(cacheKey, loadSource, data);
   }
 
   // Populates the (non-persisted) shipper/consignee/notifyParty relations on
@@ -253,9 +265,46 @@ export class DocumentsService {
       links.find((l) => l.role === PartyRole.NOTIFY_PARTY)?.party ?? null;
   }
 
-  private resolveTemplate(docType: string): string {
-    const templateName = TEMPLATE_BY_DOC_TYPE[docType];
-    if (!templateName) {
+  // Resolution priority: tenant-specific active DB template > system-default
+  // (tenant_id null) active DB template > on-disk .hbs file. The cache key
+  // encodes the DB row's id+version so bumping `version` on update forces a
+  // recompile without needing a separate invalidation call on the read path.
+  private async resolveTemplate(
+    tenantId: string,
+    docType: string,
+  ): Promise<{ cacheKey: string; loadSource: () => string }> {
+    const tenantTemplate = await this.templateRepository.findOne({
+      where: {
+        tenant_id: tenantId,
+        document_type: docType as DocumentTemplate['document_type'],
+        is_active: true,
+      },
+      order: { version: 'DESC' },
+    });
+    if (tenantTemplate) {
+      return {
+        cacheKey: `db:${tenantTemplate.id}:${tenantTemplate.version}`,
+        loadSource: () => tenantTemplate.handlebars_body,
+      };
+    }
+
+    const systemTemplate = await this.templateRepository.findOne({
+      where: {
+        tenant_id: IsNull(),
+        document_type: docType as DocumentTemplate['document_type'],
+        is_active: true,
+      },
+      order: { version: 'DESC' },
+    });
+    if (systemTemplate) {
+      return {
+        cacheKey: `db:${systemTemplate.id}:${systemTemplate.version}`,
+        loadSource: () => systemTemplate.handlebars_body,
+      };
+    }
+
+    const fileName = TEMPLATE_BY_DOC_TYPE[docType];
+    if (!fileName) {
       const known = DOC_TYPES.map((t) => t.value).join(', ');
       throw new BadRequestException(
         `Unsupported docType '${docType}'. Known types: ${known}. Of these, ` +
@@ -264,7 +313,29 @@ export class DocumentsService {
           ).join(', ')}.`,
       );
     }
-    return templateName;
+    return {
+      cacheKey: `file:${fileName}`,
+      loadSource: () => this.pdfGenerator.readFileTemplateSource(fileName),
+    };
+  }
+
+  // Updates a DB-backed template's body, bumping its version so any cached
+  // compiled template under the old cache key is orphaned, and explicitly
+  // evicts that old entry rather than leaving it to fall out of the map.
+  async updateTemplateBody(
+    id: string,
+    newBody: string,
+  ): Promise<DocumentTemplate> {
+    const template = await this.templateRepository.findOne({ where: { id } });
+    if (!template) {
+      throw new NotFoundException(`Document template ${id} not found`);
+    }
+    const oldCacheKey = `db:${template.id}:${template.version}`;
+    template.handlebars_body = newBody;
+    template.version += 1;
+    const saved = await this.templateRepository.save(template);
+    this.pdfGenerator.invalidate(oldCacheKey);
+    return saved;
   }
 
   private toPartyData(party: Party | null) {

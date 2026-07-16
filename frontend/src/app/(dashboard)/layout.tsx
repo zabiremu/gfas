@@ -18,6 +18,7 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
       { href: '/dashboard', label: 'Dashboard', icon: '📊' },
       { href: '/shipments', label: 'Shipments', icon: '📦' },
       { href: '/documents', label: 'Documents', icon: '📄' },
+      { href: '/parties', label: 'Parties', icon: '🏢' },
     ],
   },
   {

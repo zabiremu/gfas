@@ -7,13 +7,18 @@ export type PartyRole = 'SHIPPER' | 'CONSIGNEE' | 'NOTIFY_PARTY' | 'FREIGHT_FORW
 export interface Party {
   id: string;
   name: string;
-  role: PartyRole;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  phone?: string;
-  email?: string;
+  // A party's real role is per-shipment (see ShipmentParty.role below) —
+  // this is just a hint used to pre-fill/pre-filter new-party pickers.
+  defaultRole: PartyRole | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  taxId?: string | null;
+  createdAt?: string;
 }
 
 export interface CargoItem {
