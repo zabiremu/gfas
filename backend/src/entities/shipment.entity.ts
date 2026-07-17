@@ -20,6 +20,7 @@ export enum ShipmentMode {
   OCEAN = 'OCEAN',
   AIR = 'AIR',
   INLAND = 'INLAND',
+  RAIL = 'RAIL',
 }
 
 export enum ShipmentStatus {

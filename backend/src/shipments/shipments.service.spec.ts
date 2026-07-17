@@ -503,7 +503,7 @@ describe('ShipmentsService', () => {
 
   describe('getDashboardStats', () => {
     it('aggregates counts and recent shipments scoped to the tenant', async () => {
-      // Six sequential shipmentRepository.count() calls inside Promise.all,
+      // Seven sequential shipmentRepository.count() calls inside Promise.all,
       // in the exact order the service issues them.
       shipmentRepo.count!
         .mockResolvedValueOnce(42) // activeShipments (BOOKED + IN_TRANSIT)
@@ -511,6 +511,7 @@ describe('ShipmentsService', () => {
         .mockResolvedValueOnce(10) // in-transit, OCEAN
         .mockResolvedValueOnce(4) // in-transit, AIR
         .mockResolvedValueOnce(3) // in-transit, INLAND
+        .mockResolvedValueOnce(1) // in-transit, RAIL
         .mockResolvedValueOnce(2); // customsHolds
 
       // findAll() (used for recentShipments) is a real call into
@@ -525,7 +526,12 @@ describe('ShipmentsService', () => {
 
       expect(stats.activeShipments).toBe(42);
       expect(stats.inTransit).toBe(17);
-      expect(stats.inTransitByMode).toEqual({ OCEAN: 10, AIR: 4, INLAND: 3 });
+      expect(stats.inTransitByMode).toEqual({
+        OCEAN: 10,
+        AIR: 4,
+        INLAND: 3,
+        RAIL: 1,
+      });
       expect(stats.customsHolds).toBe(2);
       expect(stats.docsPending).toBe(0);
 
@@ -542,7 +548,7 @@ describe('ShipmentsService', () => {
 
       await service.getDashboardStats(tenantId);
 
-      expect(shipmentRepo.count).toHaveBeenCalledTimes(6);
+      expect(shipmentRepo.count).toHaveBeenCalledTimes(7);
       for (const call of shipmentRepo.count!.mock.calls) {
         expect(call[0]).toMatchObject({
           where: expect.objectContaining({ tenant_id: tenantId }),

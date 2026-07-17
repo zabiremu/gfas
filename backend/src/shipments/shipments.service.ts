@@ -573,6 +573,7 @@ export class ShipmentsService {
       ocean,
       air,
       inland,
+      rail,
       customsHolds,
       recentShipments,
     ] = await Promise.all([
@@ -607,6 +608,13 @@ export class ShipmentsService {
         },
       }),
       this.shipmentRepository.count({
+        where: {
+          tenant_id: tenantId,
+          status: ShipmentStatus.IN_TRANSIT,
+          mode: ShipmentMode.RAIL,
+        },
+      }),
+      this.shipmentRepository.count({
         where: { tenant_id: tenantId, status: ShipmentStatus.CUSTOMS_HOLD },
       }),
       this.findAll(tenantId),
@@ -619,6 +627,7 @@ export class ShipmentsService {
         OCEAN: ocean,
         AIR: air,
         INLAND: inland,
+        RAIL: rail,
       },
       docsPending: 0, // placeholder until documents module is implemented
       customsHolds,

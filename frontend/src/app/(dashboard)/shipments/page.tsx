@@ -16,6 +16,7 @@ const MODE_OPTIONS: { value: '' | ShipmentMode; label: string }[] = [
   { value: 'OCEAN', label: '🚢 Ocean' },
   { value: 'AIR', label: '✈️ Air' },
   { value: 'INLAND', label: '🚛 Inland' },
+  { value: 'RAIL', label: '🚆 Rail' },
 ];
 
 const DIRECTION_OPTIONS: { value: '' | ShipmentDirection; label: string }[] = [

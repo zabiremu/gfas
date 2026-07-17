@@ -19,7 +19,7 @@ export function isOverdue(dateStr?: string): boolean {
 
 export function getModeIcon(mode: string): string {
   const icons: Record<string, string> = {
-    OCEAN: '🚢', AIR: '✈️', INLAND: '🚛'
+    OCEAN: '🚢', AIR: '✈️', INLAND: '🚛', RAIL: '🚆'
   };
   return icons[mode] || '📦';
 }

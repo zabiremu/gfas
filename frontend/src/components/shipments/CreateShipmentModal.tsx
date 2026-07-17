@@ -16,6 +16,7 @@ const MODES: { value: ShipmentMode; emoji: string; label: string }[] = [
   { value: 'OCEAN', emoji: '🚢', label: 'Ocean' },
   { value: 'AIR', emoji: '✈️', label: 'Air' },
   { value: 'INLAND', emoji: '🚛', label: 'Inland' },
+  { value: 'RAIL', emoji: '🚆', label: 'Rail' },
 ];
 
 const DIRECTIONS: { value: ShipmentDirection; label: string }[] = [

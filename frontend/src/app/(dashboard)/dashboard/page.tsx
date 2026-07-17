@@ -40,6 +40,7 @@ const MODE_META: Record<ShipmentMode, { emoji: string; label: string }> = {
   OCEAN: { emoji: '🚢', label: 'Ocean' },
   AIR: { emoji: '✈️', label: 'Air' },
   INLAND: { emoji: '🚛', label: 'Inland' },
+  RAIL: { emoji: '🚆', label: 'Rail' },
 };
 
 const STATUS_BADGE: Record<ShipmentStatus, string> = {
@@ -184,7 +185,7 @@ export default function DashboardPage() {
           icon="📡"
           value={stats.inTransit}
           label="In Transit"
-          sub={`🚢 ${stats.inTransitByMode.OCEAN} · ✈️ ${stats.inTransitByMode.AIR} · 🚛 ${stats.inTransitByMode.INLAND}`}
+          sub={`🚢 ${stats.inTransitByMode.OCEAN} · ✈️ ${stats.inTransitByMode.AIR} · 🚛 ${stats.inTransitByMode.INLAND} · 🚆 ${stats.inTransitByMode.RAIL}`}
           borderColor="#0A7A5E"
         />
         <KpiCard

@@ -1,4 +1,4 @@
-export type ShipmentMode = 'OCEAN' | 'AIR' | 'INLAND';
+export type ShipmentMode = 'OCEAN' | 'AIR' | 'INLAND' | 'RAIL';
 export type ShipmentDirection = 'IMPORT' | 'EXPORT' | 'DOMESTIC';
 export type ShipmentStatus = 'DRAFT' | 'BOOKED' | 'IN_TRANSIT' | 'CUSTOMS_HOLD' | 'ARRIVED' | 'DELIVERED' | 'CANCELLED';
 export type DocumentStatus = 'DRAFT' | 'ISSUED' | 'SENT' | 'SIGNED' | 'VOID';
@@ -147,7 +147,7 @@ export interface WarehouseEntry {
 export interface DashboardStats {
   activeShipments: number;
   inTransit: number;
-  inTransitByMode: { OCEAN: number; AIR: number; INLAND: number };
+  inTransitByMode: { OCEAN: number; AIR: number; INLAND: number; RAIL: number };
   docsPending: number;
   customsHolds: number;
   recentShipments: Shipment[];

@@ -7,6 +7,7 @@ const MODES: Record<
   OCEAN: { emoji: '🚢', label: 'Ocean', color: '#1559C9' },
   AIR: { emoji: '✈️', label: 'Air', color: '#0A7A5E' },
   INLAND: { emoji: '🚛', label: 'Inland', color: '#A05C00' },
+  RAIL: { emoji: '🚆', label: 'Rail', color: '#6B21A8' },
 };
 
 export default function ModeBadge({ mode }: { mode: ShipmentMode }) {
